@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relatório</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root {
+      /* Marca (fixa) */
+      --azul: #002042;
+      --laranja: #f7ad40;
+      --laranja-escuro: #e84e27;
+      --grad-marca: linear-gradient(135deg, var(--laranja) 0%, var(--laranja-escuro) 100%);
+      /* Neutros frios */
+      --texto: #1d2a3c;
+      --suave: #64748b;
+      --fraco: #97a6b8;
+      --borda: #e3eaf2;
+      --borda-forte: #cdd8e4;
+      --fundo: #f1f5f9;
+      --painel: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', system-ui, Arial, sans-serif;
+      color: var(--texto); background: var(--fundo); margin: 0; font-size: 13px; line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .folha {
+      max-width: 980px; margin: 28px auto 48px; background: var(--painel); padding: 40px 46px 64px;
+      min-height: 60vh; border-radius: 16px; border: 1px solid var(--borda);
+      box-shadow: 0 2px 4px rgba(14,26,43,.04), 0 12px 36px rgba(14,26,43,.08);
+    }
+
+    /* Barra de ações (não sai na impressão) */
+    .barra {
+      position: sticky; top: 0; z-index: 10; color: #eef4fb;
+      background: var(--azul);
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 6px 20px rgba(4,12,24,.22);
+      padding: 10px 20px; display: flex; gap: 14px; align-items: center;
+    }
+    .barra strong { color: var(--laranja); font-weight: 600; }
+    .barra .esp { flex: 1; }
+    .barra button {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--grad-marca); color: #33230a; border: none; border-radius: 9px;
+      padding: 9px 20px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit;
+      box-shadow: 0 2px 8px rgba(232,78,39,.3); transition: filter .15s, box-shadow .15s;
+    }
+    .barra button:hover { filter: saturate(1.08) brightness(1.04); box-shadow: 0 4px 14px rgba(232,78,39,.4); }
+    .barra a { color: #b9c9dc; font-size: 13px; text-decoration: none; }
+    .barra a:hover { color: #fff; }
+
+    .timbrado { text-align: center; margin-bottom: 18px; }
+    .timbrado img { max-width: 100%; max-height: 130px; }
+
+    h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin: 4px 0 2px; color: var(--azul); }
+    .meta { color: var(--suave); font-size: 12px; margin-bottom: 20px; border-bottom: 2px solid var(--azul); padding-bottom: 10px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th {
+      text-align: left; background: var(--azul); color: #fff; padding: 8px 10px;
+      font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600;
+    }
+    td { padding: 7px 10px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+    tr:nth-child(even) td { background: #f8fafd; }
+    .num { text-align: right; }
+
+    .grupo { margin-top: 24px; page-break-inside: avoid; }
+    .grupo h2 {
+      font-size: 15px; font-weight: 700; color: var(--azul); margin: 0 0 6px;
+      border-left: 4px solid var(--laranja); padding-left: 9px;
+    }
+    .grupo .sub { color: var(--suave); font-size: 12px; margin: 0 0 8px; }
+
+    .resumo { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 22px; }
+    .resumo .card {
+      border: 1px solid var(--borda); border-radius: 12px; padding: 12px 18px;
+      min-width: 116px; background: var(--painel); position: relative; overflow: hidden;
+      box-shadow: 0 1px 2px rgba(14,26,43,.04);
+    }
+    .resumo .card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--grad-marca);
+    }
+    .resumo .card b { display: block; font-size: 24px; letter-spacing: -0.02em; color: var(--azul); font-variant-numeric: tabular-nums; }
+    .resumo .card span { font-size: 10.5px; color: var(--suave); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+
+    .assin { width: 190px; }
+    .assin div { border-bottom: 1px solid var(--fraco); height: 18px; }
+
+    .selo {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600; padding: 1px 9px; border-radius: 999px; white-space: nowrap;
+      border: 1px solid transparent;
+    }
+    .selo::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .s-pendente { background: #f1f5f9; color: #47586e; border-color: #e3eaf2; }
+    .s-enviado { background: #ecf3fa; color: #2d5c8f; border-color: #d3e2f2; }
+    .s-confirmado { background: #e7f5ec; color: #15803d; border-color: #c3e5d0; }
+    .s-checkin { background: #15803d; color: #fff; }
+    .s-cancelado { background: #fdefe9; color: #cf3a1a; border-color: #f4cfc0; }
+
+    /* Etiquetas / credenciais */
+    .etiquetas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .etiqueta {
+      border: 1.5px solid var(--azul); border-radius: 12px; padding: 14px 16px;
+      display: flex; gap: 14px; align-items: center; page-break-inside: avoid;
+    }
+    .etiqueta img { width: 96px; height: 96px; }
+    .etiqueta .ei b { display: block; font-size: 15px; color: var(--azul); }
+    .etiqueta .ei small { color: var(--suave); }
+    .etiqueta .mesa { margin-top: 5px; font-weight: 700; color: var(--laranja-escuro); font-size: 13px; }
+    .etiqueta .codigo {
+      margin-top: 6px; font-size: 11px; color: var(--suave);
+    }
+    .etiqueta .codigo b {
+      font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+      font-size: 13px; letter-spacing: .08em; color: var(--texto);
+    }
+
+    /* Mapa de mesas (SVG gerado pelo mapa.js) */
+    #mapa-svg { border: 1px solid var(--borda); border-radius: 12px; width: 100%; overflow: auto; background: #f8fafd; }
+    #mapa-svg svg { display: block; }
+    .mesa-forma { fill: #fff; stroke: var(--azul); stroke-width: 1.6; }
+    .mesa-cheia .mesa-forma { fill: #fdeee4; stroke: var(--laranja-escuro); }
+    .mesa-numero { font-weight: 700; font-size: 20px; fill: var(--azul); text-anchor: middle; }
+    .mesa-lotacao { font-size: 11px; fill: var(--suave); text-anchor: middle; }
+    .palco { fill: var(--azul); }
+    .palco-texto { fill: var(--laranja); font-size: 12px; letter-spacing: 3px; text-anchor: middle; }
+    .dica-mesa { display: none; }
+
+    .rodape-rel {
+      margin-top: 32px; border-top: 1px solid var(--borda); padding-top: 8px;
+      font-size: 11px; color: var(--suave); display: flex; justify-content: space-between;
+    }
+
+    @media (max-width: 700px) {
+      .folha { margin: 14px 10px 30px; padding: 22px 18px 40px; border-radius: 12px; }
+      .barra { padding: 10px 12px; gap: 10px; flex-wrap: wrap; }
+      .etiquetas { grid-template-columns: 1fr; }
+      .folha { overflow-x: auto; }
+    }
+
+    @media print {
+      body { background: #fff; font-size: 12px; }
+      .folha { max-width: none; padding: 0; min-height: 0; margin: 0; box-shadow: none; border-radius: 0; border: none; }
+      .barra { display: none; }
+      th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .selo, .s-checkin, tr:nth-child(even) td, .etiqueta, .resumo .card, .resumo .card::before,
+      .mesa-forma, .palco {
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      a { color: inherit; text-decoration: none; }
+      @page { margin: 14mm 12mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="barra">
+    <img src="/logo-branco.png" alt="Mais Corporativo" style="height:24px">
+    <span>Relatório: <strong id="barra-titulo">…</strong></span>
+    <span class="esp"></span>
+    <a href="/admin.html">← Voltar ao painel</a>
+    <button onclick="window.print()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Imprimir / Salvar PDF</button>
+  </div>
+
+  <div class="folha">
+    <div class="timbrado" id="timbrado"></div>
+    <h1 id="titulo">Carregando…</h1>
+    <div class="meta" id="meta"></div>
+    <div id="conteudo"></div>
+    <div class="rodape-rel">
+      <span id="rodape-evento"></span>
+      <img src="/logo-azul.png" alt="Mais Corporativo" style="height:16px;align-self:center">
+      <span id="rodape-emissao"></span>
+    </div>
+  </div>
+
+  <script src="/js/comum.js"></script>
+  <script src="/js/mapa.js"></script>
+  <script src="/js/relatorios.js"></script>
+</body>
+</html>

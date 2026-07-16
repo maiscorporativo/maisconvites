@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel do Organizador — Sistema de Convites</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-marca"><img src="/logo-azul.png" alt="Mais Corporativo"></div>
+    <div class="sidebar-rotulo">Gestão do evento</div>
+    <nav class="abas" id="abas">
+      <button data-secao="eventos" class="apenas-master">
+        <svg class="icone" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>Eventos</button>
+      <button data-secao="visao" class="ativa">
+        <svg class="icone" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Visão geral</button>
+      <button data-secao="evento">
+        <svg class="icone" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Evento</button>
+      <button data-secao="empresas">
+        <svg class="icone" viewBox="0 0 24 24"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/><path d="M2 22h20"/><path d="M10 6h1"/><path d="M13 6h1"/><path d="M10 10h1"/><path d="M13 10h1"/><path d="M10 14h1"/><path d="M13 14h1"/><path d="M10 22v-4h4v4"/></svg>Convidados principais</button>
+      <button data-secao="convidados">
+        <svg class="icone" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Convidados</button>
+      <button data-secao="mapa" id="aba-mapa">
+        <svg class="icone" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>Mapa de mesas</button>
+      <button data-secao="envio">
+        <svg class="icone" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Envio</button>
+      <button data-secao="credenciamento">
+        <svg class="icone" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M21 14v7h-7"/><path d="M18 18h.01"/></svg>Credenciamento</button>
+      <button data-secao="relatorios">
+        <svg class="icone" viewBox="0 0 24 24"><path d="M3 3v18h18"/><line x1="7" y1="16" x2="7" y2="11"/><line x1="12" y1="16" x2="12" y2="7"/><line x1="17" y1="16" x2="17" y2="13"/></svg>Relatórios</button>
+    </nav>
+    <div class="sidebar-rodape">Mais Corporativo · Convites</div>
+  </aside>
+  <div class="sidebar-veu" id="sidebar-veu"></div>
+
+  <div class="area-principal">
+    <header class="topbar">
+      <button class="btn-menu-mobile" id="btn-menu-mobile" type="button" aria-label="Abrir menu">
+        <svg class="icone" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-titulo">
+        <span class="trilha" id="trilha-evento">Painel do organizador</span>
+        <strong id="titulo-secao">Visão geral</strong>
+      </div>
+      <span class="esp"></span>
+      <select id="seletor-evento" title="Evento ativo"></select>
+      <div class="menu-usuario" id="menu-usuario">
+        <button class="menu-usuario-gatilho" id="btn-menu-usuario" type="button" aria-haspopup="true">
+          <span class="avatar" id="avatar-usuario">…</span>
+          <span class="menu-usuario-nome"><span id="nome-usuario-vis">Carregando…</span><small id="papel-usuario-vis"></small></span>
+          <svg class="icone seta" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="menu-suspenso" id="menu-suspenso-usuario">
+          <span class="usuario-logado" id="usuario-logado"></span>
+          <button class="item-menu" id="btn-trocar-senha">
+            <svg class="icone" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Trocar senha</button>
+          <button class="item-menu perigo" id="btn-sair">
+            <svg class="icone" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sair</button>
+        </div>
+      </div>
+    </header>
+
+  <main class="conteudo">
+    <!-- ═══ EVENTOS (visão master) ═══ -->
+    <section class="secao" id="secao-eventos">
+      <div class="painel">
+        <h2>Todos os eventos</h2>
+        <p>Visão geral da plataforma: crie eventos, abra o painel de cada um, gerencie seus
+           administradores (na aba <em>Evento</em>) e ative ou desative funcionalidades.</p>
+        <button class="botao-ouro" id="btn-novo-evento-master">+ Criar novo evento</button>
+      </div>
+      <div class="cartoes-eventos" id="lista-eventos-master">
+        <div class="cartao-evento"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+        <div class="cartao-evento"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+        <div class="cartao-evento"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+      </div>
+    </section>
+
+    <!-- ═══ VISÃO GERAL ═══ -->
+    <section class="secao ativa" id="secao-visao">
+      <div class="cartoes-stats" id="stats">
+        <div class="stat"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+        <div class="stat"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+        <div class="stat"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+        <div class="stat"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+        <div class="stat"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+        <div class="stat"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+      </div>
+      <div class="painel">
+        <h2>Convites individuais (pool)</h2>
+        <p>Quando o prazo expira, os convites não utilizados pelas empresas voltam para este pool e podem ser
+           distribuídos individualmente conforme indicação da organização.</p>
+        <div id="area-expiracao"></div>
+        <div class="linha-flex" style="margin-top:10px">
+          <div class="curto"><label>Ajustar pool</label><input type="number" id="pool-delta" value="1" min="1"></div>
+          <div class="curto"><button class="botao-claro" id="btn-pool-mais">+ Adicionar</button></div>
+          <div class="curto"><button class="botao-claro" id="btn-pool-menos">− Remover</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ EVENTO ═══ -->
+    <section class="secao" id="secao-evento">
+      <div class="painel">
+        <h2>Dados do evento</h2>
+        <form id="form-evento">
+          <div class="linha-flex">
+            <div style="flex:2 1 260px"><label>Nome do evento *</label><input name="nome" required></div>
+            <div class="curto"><label>Data *</label><input name="data_evento" type="date" required></div>
+            <div class="curto"><label>Horário</label><input name="hora_evento" type="time"></div>
+          </div>
+          <div class="linha-flex">
+            <div><label>Local *</label><input name="local_nome" required placeholder="Casa Bizutt"></div>
+            <div style="flex:2 1 260px"><label>Endereço *</label><input name="endereco" required placeholder="Rua do Ator, 577 - São Paulo/SP"></div>
+          </div>
+          <div class="linha-flex">
+            <div><label>Traje / dress code</label><input name="dress_code"></div>
+            <div class="curto"><label>Prazo dos convites (deadline) *</label><input name="deadline" type="date" required></div>
+          </div>
+          <label>Descrição (aparece no convite)</label>
+          <textarea name="descricao"></textarea>
+
+          <h3>Hotéis próximos</h3>
+          <div id="lista-hoteis"></div>
+          <button type="button" class="botao-mini botao-claro" id="btn-add-hotel">+ Adicionar hotel</button>
+
+          <h3>Comodidades / facilities</h3>
+          <div id="lista-facilities"></div>
+          <button type="button" class="botao-mini botao-claro" id="btn-add-facility">+ Adicionar comodidade</button>
+
+          <h3>Personalização do convite (e-mail e página do convite)</h3>
+          <label>Banner de cabeçalho (JPG/PNG/WebP, até 2 MB — sugestão: 1200×400px)</label>
+          <div id="banner-preview"></div>
+          <div class="linha-flex">
+            <div><input type="file" id="banner-arquivo" accept="image/png,image/jpeg,image/webp"></div>
+            <div class="curto"><button type="button" class="botao-mini botao-perigo oculto" id="btn-remover-banner">Remover banner</button></div>
+          </div>
+          <div class="linha-flex">
+            <div><label>Título do convite (padrão: nome do evento)</label><input name="email_titulo" placeholder="Ex.: Jantar de Gala FECOFAR"></div>
+            <div><label>Rodapé (padrão: "Convite pessoal e intransferível")</label><input name="email_rodape"></div>
+          </div>
+          <label>Timbrado dos relatórios (cabeçalho das páginas impressas — JPG/PNG/WebP, até 2 MB)</label>
+          <div id="timbrado-preview"></div>
+          <div class="linha-flex">
+            <div><input type="file" id="timbrado-arquivo" accept="image/png,image/jpeg,image/webp"></div>
+            <div class="curto"><button type="button" class="botao-mini botao-perigo oculto" id="btn-remover-timbrado">Remover timbrado</button></div>
+          </div>
+          <label>Texto de abertura (padrão: descrição do evento)</label>
+          <textarea name="email_texto" placeholder="Mensagem de boas-vindas que abre o convite…"></textarea>
+
+          <br><br>
+          <div class="linha-flex">
+            <button type="submit" class="botao-ouro">Salvar evento</button>
+            <button type="button" class="botao-claro" id="btn-novo-evento">+ Criar novo evento</button>
+          </div>
+        </form>
+      </div>
+      <div class="painel apenas-master" id="painel-funcionalidades">
+        <h2>Funcionalidades do evento</h2>
+        <p>Alguns eventos não utilizam lugares marcados — nesse caso, desative o mapa de mesas
+           e os convidados ficam com assento livre (a aba e as informações de mesa somem do sistema e dos convites).</p>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" id="toggle-mapa" style="width:auto"> <strong>Mapa de mesas habilitado</strong>
+        </label>
+      </div>
+      <div class="painel apenas-master" id="painel-admins">
+        <h2>Administrador do evento</h2>
+        <p>Crie o acesso do cliente responsável por este evento. Ele poderá configurar o evento,
+           gerenciar convidados principais e convidados, conectar o próprio WhatsApp e e-mail na aba
+           <em>Envio</em> e operar o credenciamento — sempre restrito a este evento.</p>
+        <form id="form-admin-evento">
+          <div class="linha-flex">
+            <div><label>Nome *</label><input name="nome" required></div>
+            <div><label>Cargo</label><input name="cargo"></div>
+          </div>
+          <div class="linha-flex">
+            <div><label>E-mail</label><input name="email" type="email"></div>
+            <div><label>Telefone / WhatsApp</label><input name="telefone" placeholder="(11) 99999-9999"></div>
+          </div>
+          <br>
+          <button type="submit" class="botao-ouro">Criar acesso do administrador</button>
+        </form>
+        <br>
+        <div class="rolagem-x"><table class="tabela" id="tabela-admins"></table></div>
+      </div>
+      <div class="painel">
+        <h2>Localização</h2>
+        <div class="mapa-embed"><iframe id="mapa-google" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+      </div>
+    </section>
+
+    <!-- ═══ ENVIO (e-mail e WhatsApp do evento) ═══ -->
+    <section class="secao" id="secao-envio">
+      <div class="painel">
+        <h2>WhatsApp do evento</h2>
+        <p>Conecte o <strong>seu WhatsApp pessoal</strong> escaneando um QR code — os convites deste evento
+           passam a ser enviados do seu número, e as respostas dos convidados chegam no seu aparelho.</p>
+        <div id="wa-status" style="margin:12px 0"></div>
+        <div class="linha-flex">
+          <div class="curto"><button class="botao-ouro" id="btn-wa-conectar">Conectar meu WhatsApp</button></div>
+          <div class="curto"><button class="botao-perigo oculto" id="btn-wa-desconectar">Desconectar</button></div>
+        </div>
+      </div>
+      <div class="painel">
+        <h2>E-mail do evento</h2>
+        <p>Defina o nome do remetente e o seu e-mail pessoal: os convites saem com o seu nome e as
+           <strong>respostas dos convidados caem na sua caixa de entrada</strong>. Se preferir, no modo avançado
+           o envio sai 100% da sua própria conta de e-mail.</p>
+        <form id="form-envio-email">
+          <div class="linha-flex">
+            <div><label>Nome do remetente</label><input name="remetente_nome" placeholder="Ex.: Paulo — Jantar FECOFAR"></div>
+            <div><label>Seu e-mail (recebe as respostas)</label><input name="reply_to" type="email" placeholder="voce@exemplo.com.br"></div>
+          </div>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:14px">
+            <input type="checkbox" id="smtp-proprio" style="width:auto"> <strong>Modo avançado:</strong>&nbsp;enviar pela minha própria conta de e-mail (SMTP)
+          </label>
+          <div id="campos-smtp" class="oculto">
+            <div class="linha-flex">
+              <div><label>Servidor SMTP</label><input name="smtp_host" placeholder="smtp.gmail.com"></div>
+              <div class="curto"><label>Porta</label><input name="smtp_port" type="number" value="587"></div>
+              <div class="curto"><label>Conexão segura (SSL)</label>
+                <select name="smtp_secure"><option value="0">Não (STARTTLS)</option><option value="1">Sim (465)</option></select></div>
+            </div>
+            <div class="linha-flex">
+              <div><label>Usuário (seu e-mail)</label><input name="smtp_user" type="email"></div>
+              <div><label>Senha de app</label><input name="smtp_pass" type="password" placeholder="Deixe em branco para manter a atual"></div>
+            </div>
+            <p><small>No Gmail, gere uma "senha de app" em myaccount.google.com/apppasswords (exige verificação em duas etapas).</small></p>
+          </div>
+          <br>
+          <div class="linha-flex">
+            <button type="submit" class="botao-ouro">Salvar configuração</button>
+            <button type="button" class="botao-claro" id="btn-testar-email">Enviar e-mail de teste</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ═══ EMPRESAS ═══ -->
+    <section class="secao" id="secao-empresas">
+      <div class="painel">
+        <h2>Cadastrar convidado principal</h2>
+        <p>O convidado principal (empresa ou pessoa) recebe um login e senha para acessar a área privativa
+           e inscrever os convidados da sua cota — os convites são disparados automaticamente na inscrição.</p>
+        <form id="form-empresa">
+          <div class="linha-flex">
+            <div style="flex:2 1 220px"><label>Nome da empresa / organização *</label><input name="empresa_nome" required></div>
+            <div class="curto"><label>Cota de convites</label><input name="cota" type="number" value="4" min="1"></div>
+          </div>
+          <h3>Responsável (detentor do login)</h3>
+          <div class="linha-flex">
+            <div><label>Nome</label><input name="nome"></div>
+            <div><label>Cargo</label><input name="cargo"></div>
+          </div>
+          <div class="linha-flex">
+            <div><label>E-mail</label><input name="email" type="email"></div>
+            <div><label>Telefone / WhatsApp</label><input name="telefone" placeholder="(11) 99999-9999"></div>
+          </div>
+          <br>
+          <button type="submit" class="botao-ouro">Cadastrar e gerar acesso</button>
+        </form>
+      </div>
+      <div class="painel">
+        <h2>Importar planilha</h2>
+        <p>Importe empresas/convidados principais em lote a partir de uma planilha
+           <strong>.xlsx, .xls ou .csv</strong>. Colunas reconhecidas:
+           <strong>Empresa</strong> (obrigatória), <strong>Cota de convites</strong> (padrão: 4),
+           <strong>Responsável</strong>, <strong>Cargo</strong>, <strong>E-mail</strong> e
+           <strong>Telefone/WhatsApp</strong>. Você revisa tudo antes de confirmar, e os
+           logins/senhas são gerados automaticamente.</p>
+        <div class="linha-flex">
+          <div><input type="file" id="arquivo-importacao" accept=".xlsx,.xls,.csv"></div>
+          <div class="curto"><button class="botao-ouro" id="btn-importar" disabled>Pré-visualizar</button></div>
+          <div class="curto"><a class="botao botao-claro" href="/api/admin/importar/modelo">
+            <svg class="icone" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar modelo</a></div>
+        </div>
+      </div>
+      <div class="painel">
+        <h2>Convidados principais</h2>
+        <div class="rolagem-x"><table class="tabela" id="tabela-empresas">
+          <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
+          <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
+          <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ═══ CONVIDADOS ═══ -->
+    <section class="secao" id="secao-convidados">
+      <div class="painel">
+        <h2>Convite individual</h2>
+        <p>Consome 1 convite do pool individual (disponível: <strong id="pool-disponivel">0</strong>).</p>
+        <form id="form-individual">
+          <div class="linha-flex">
+            <div><label>Nome *</label><input name="nome" required></div>
+            <div><label>E-mail</label><input name="email" type="email"></div>
+            <div><label>Telefone / WhatsApp</label><input name="telefone"></div>
+            <div class="curto"><button type="submit" class="botao-ouro">Adicionar</button></div>
+          </div>
+        </form>
+      </div>
+      <div class="painel">
+        <h2>Todos os convidados</h2>
+        <div class="linha-flex">
+          <div><input id="filtro-convidados" placeholder="Filtrar por nome, empresa ou status…"></div>
+        </div>
+        <br>
+        <div class="rolagem-x"><table class="tabela" id="tabela-convidados">
+          <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
+          <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
+          <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ═══ MAPA ═══ -->
+    <section class="secao" id="secao-mapa">
+      <div class="painel">
+        <h2>Mapa de mesas</h2>
+        <p>Arraste as mesas para organizar o layout do salão. Passe o mouse sobre uma mesa para ver quem está
+           acomodado. Clique em uma mesa para editar e acomodar convidados.</p>
+        <form id="form-mesas" class="linha-flex">
+          <div class="curto"><label>Quantidade</label><input name="quantidade" type="number" value="1" min="1" max="100"></div>
+          <div class="curto"><label>Lugares</label><input name="capacidade" type="number" value="8" min="1"></div>
+          <div class="curto"><label>Formato</label>
+            <select name="formato"><option value="redonda">Redonda</option><option value="retangular">Retangular</option></select>
+          </div>
+          <div class="curto"><button type="submit" class="botao-ouro">+ Criar mesas</button></div>
+        </form>
+        <br>
+        <div id="mapa-mesas" style="height:520px"></div>
+        <div class="legenda-mapa">
+          <span><span class="ponto"></span>Mesa com lugares livres</span>
+          <span><span class="ponto cheia"></span>Mesa lotada</span>
+          <span>Arraste para mover · clique para editar/acomodar</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ RELATÓRIOS ═══ -->
+    <section class="secao" id="secao-relatorios">
+      <div class="painel">
+        <h2>Relatórios para impressão / PDF</h2>
+        <p>Os relatórios abrem em uma página pronta para impressão com o <strong>timbrado do evento</strong>
+           (configure na aba <em>Evento</em> → Personalização). Use o botão "Imprimir / Salvar PDF" da página
+           para gerar o PDF pelo navegador.</p>
+        <div class="linha-flex">
+          <div><label>Filtro por status (lista geral e presença)</label>
+            <select id="rel-status">
+              <option value="">Todos (exceto cancelados)</option>
+              <option value="pendente">Pendentes</option>
+              <option value="enviado">Convite enviado</option>
+              <option value="confirmado">Confirmados</option>
+              <option value="checkin">Presentes (check-in)</option>
+              <option value="cancelado">Cancelados</option>
+            </select></div>
+          <div><label>Filtro por empresa (lista geral e etiquetas)</label>
+            <select id="rel-empresa"><option value="">Todas</option></select></div>
+        </div>
+      </div>
+      <div class="cartoes-stats" id="cartoes-relatorios"></div>
+    </section>
+
+    <!-- ═══ CREDENCIAMENTO ═══ -->
+    <section class="secao" id="secao-credenciamento">
+      <div class="painel">
+        <h2>Credenciamento (check-in)</h2>
+        <p>Escaneie o QR code do convite com a câmera, ou cole o código/link manualmente.</p>
+        <div class="linha-flex">
+          <div><label>Código ou link do convite</label><input id="entrada-token" placeholder="Código de 6 dígitos do convite, ou o link/código do QR"></div>
+          <div class="curto"><button class="botao-ouro" id="btn-checkin">Check-in</button></div>
+          <div class="curto"><button class="botao-claro" id="btn-camera">
+            <svg class="icone" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Câmera</button></div>
+        </div>
+        <div id="area-camera" class="oculto" style="margin-top:14px">
+          <video id="video-camera" style="width:100%;max-width:420px;border-radius:12px" playsinline></video>
+        </div>
+        <div id="resultado-checkin"></div>
+      </div>
+      <div class="painel">
+        <h2>Últimos check-ins</h2>
+        <div class="rolagem-x"><table class="tabela" id="tabela-checkins">
+          <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
+          <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
+        </table></div>
+      </div>
+    </section>
+  </main>
+  </div>
+
+  <script src="/js/comum.js"></script>
+  <script src="/js/mapa.js"></script>
+  <script src="/js/jsqr.min.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>
+    // ── Aprimoramentos visuais do novo layout (aditivo — não altera o comportamento do admin.js) ──
+    (function () {
+      // Título da seção na topbar
+      const TITULOS = {
+        eventos: 'Eventos', visao: 'Visão geral', evento: 'Evento', empresas: 'Convidados principais',
+        convidados: 'Convidados', mapa: 'Mapa de mesas', envio: 'Envio',
+        credenciamento: 'Credenciamento', relatorios: 'Relatórios',
+      };
+      const abas = document.getElementById('abas');
+      const tituloEl = document.getElementById('titulo-secao');
+      function sincronizarTitulo() {
+        const ativa = abas.querySelector('button.ativa');
+        if (ativa && TITULOS[ativa.dataset.secao]) tituloEl.textContent = TITULOS[ativa.dataset.secao];
+      }
+      abas.addEventListener('click', () => setTimeout(sincronizarTitulo, 0));
+      sincronizarTitulo();
+
+      // Nome do evento ativo no breadcrumb (espelha o seletor de evento)
+      const sel = document.getElementById('seletor-evento');
+      const trilha = document.getElementById('trilha-evento');
+      function sincronizarTrilha() {
+        const opt = sel.selectedOptions && sel.selectedOptions[0];
+        if (opt) trilha.textContent = opt.textContent;
+      }
+      sel.addEventListener('change', sincronizarTrilha);
+      new MutationObserver(sincronizarTrilha).observe(sel, { childList: true });
+
+      // Menu lateral no mobile
+      const fecharMenu = () => document.body.classList.remove('menu-aberto');
+      document.getElementById('btn-menu-mobile').addEventListener('click', () => document.body.classList.toggle('menu-aberto'));
+      document.getElementById('sidebar-veu').addEventListener('click', fecharMenu);
+      abas.addEventListener('click', e => { if (e.target.closest('button[data-secao]')) fecharMenu(); });
+
+      // Dropdown do usuário
+      const menu = document.getElementById('menu-usuario');
+      document.getElementById('btn-menu-usuario').addEventListener('click', e => {
+        e.stopPropagation();
+        menu.classList.toggle('aberto');
+      });
+      document.addEventListener('click', e => { if (!menu.contains(e.target)) menu.classList.remove('aberto'); });
+      document.getElementById('menu-suspenso-usuario').addEventListener('click', e => {
+        if (e.target.closest('.item-menu')) menu.classList.remove('aberto');
+      });
+
+      // Avatar com iniciais — espelha o que o admin.js escreve em #usuario-logado
+      const origem = document.getElementById('usuario-logado');
+      const nomeVis = document.getElementById('nome-usuario-vis');
+      const papelVis = document.getElementById('papel-usuario-vis');
+      const avatar = document.getElementById('avatar-usuario');
+      function espelharUsuario() {
+        const texto = origem.textContent.replace(/[^\p{L}\p{N}\s·@._-]/gu, '').trim();
+        if (!texto) return;
+        const [nome, papel] = texto.split('·').map(s => (s || '').trim());
+        if (nome) {
+          nomeVis.textContent = nome;
+          const partes = nome.split(/\s+/).filter(Boolean);
+          avatar.textContent = ((partes[0] || '')[0] || '') + ((partes[1] || '')[0] || '');
+          avatar.textContent = avatar.textContent.toUpperCase() || '•';
+        }
+        if (papel) papelVis.textContent = papel;
+      }
+      new MutationObserver(espelharUsuario).observe(origem, { childList: true, subtree: true, characterData: true });
+      espelharUsuario();
+    })();
+  </script>
+</body>
+</html>

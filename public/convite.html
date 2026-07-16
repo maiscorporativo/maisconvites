@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seu Convite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="pagina-convite">
+  <div class="convite-envoltorio">
+    <div class="convite-cartao" id="cartao">
+      <div id="area-banner"></div>
+      <div class="convite-topo">
+        <img src="/logo-branco.png" alt="Mais Corporativo" style="height:38px;margin-bottom:16px">
+        <div class="rotulo">Convite</div>
+        <h1 id="nome-evento">Carregando…</h1>
+      </div>
+      <div class="convite-corpo" id="corpo"></div>
+    </div>
+  </div>
+
+  <script src="/js/comum.js"></script>
+  <script>
+    const token = location.pathname.split('/').pop();
+
+    (async function init() {
+      let dados;
+      try {
+        dados = await api('/api/convite/' + encodeURIComponent(token));
+      } catch (e) {
+        document.getElementById('nome-evento').textContent = 'Convite não encontrado';
+        document.getElementById('corpo').innerHTML =
+          `<div class="aviso-caixa aviso-erro">${esc(e.message)} Verifique o link recebido ou contate a organização.</div>`;
+        return;
+      }
+      const { convidado: c, evento: e, qr } = dados;
+      document.title = `Convite — ${e.nome}`;
+      document.getElementById('nome-evento').textContent = e.email_titulo || e.nome;
+      if (e.banner_url) {
+        document.getElementById('area-banner').innerHTML =
+          `<img src="${esc(e.banner_url)}" alt="" style="display:block;width:100%;height:auto">`;
+      }
+
+      const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' +
+        encodeURIComponent(e.local_nome + ' ' + e.endereco);
+      const temAssento = c.mesa_numero != null;
+
+      document.getElementById('corpo').innerHTML = `
+        <p class="saudacao">Olá, <strong>${esc(c.nome)}</strong>${c.empresa ? ` <small style="color:var(--texto-suave)">· ${esc(c.empresa)}</small>` : ''}!</p>
+        <p>${esc(e.email_texto || e.descricao || 'Temos o prazer de convidá-lo(a) para este evento especial.')}</p>
+
+        <div class="bloco-info">
+          📅 <strong>Data:</strong> ${dataBr(e.data_evento)} às ${esc(e.hora_evento)}<br>
+          📍 <strong>Local:</strong> ${esc(e.local_nome)} — ${esc(e.endereco)}<br>
+          ${e.dress_code ? `👔 <strong>Traje:</strong> ${esc(e.dress_code)}<br>` : ''}
+          🗺️ <a href="${mapsUrl}" target="_blank" style="color:var(--dourado-escuro)">Abrir no Google Maps</a>
+        </div>
+
+        ${temAssento ? `
+          <div class="bloco-assento">
+            Seu lugar reservado<br>
+            <span class="grande">Mesa ${c.mesa_numero}${c.cadeira != null ? ' · Cadeira ' + c.cadeira : ''}</span>
+            ${c.mesa_nome ? `<br><small>${esc(c.mesa_nome)}</small>` : ''}
+          </div>` : ''}
+
+        <div class="qr-area">
+          <img src="${qr}" alt="QR code do convite">
+          <p>Apresente este QR code na recepção para o credenciamento.</p>
+          <div class="codigo-convite">
+            <span>Código do convite</span>
+            <strong>${esc(c.codigo ? String(c.codigo).replace(/(.{3})/g, '$1 ').trim() : token)}</strong>
+            <small>Se o QR não puder ser lido, informe este código na recepção.</small>
+          </div>
+        </div>
+
+        <div id="area-confirmar" style="text-align:center;margin:10px 0 24px"></div>
+
+        <h3 style="color:var(--dourado-escuro)">Como chegar</h3>
+        <div class="mapa-embed">
+          <iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+            src="https://www.google.com/maps?q=${encodeURIComponent(e.local_nome + ' ' + e.endereco)}&output=embed"></iframe>
+        </div>
+
+        ${(e.hoteis || []).length ? `
+          <h3 style="color:var(--dourado-escuro)">🏨 Hotéis próximos</h3>
+          <ul class="lista-simples">${e.hoteis.map(h =>
+            `<li><strong>${esc(h.nome)}</strong>${h.distancia ? ` (${esc(h.distancia)})` : ''}${h.endereco ? ` — ${esc(h.endereco)}` : ''}${h.telefone ? ` — ${esc(h.telefone)}` : ''}</li>`).join('')}</ul>` : ''}
+
+        ${(e.facilities || []).length ? `
+          <h3 style="color:var(--dourado-escuro)">✨ Comodidades</h3>
+          <ul class="lista-simples">${e.facilities.map(f =>
+            `<li><strong>${esc(f.titulo)}:</strong> ${esc(f.descricao)}</li>`).join('')}</ul>` : ''}
+
+        <p style="text-align:center;color:var(--texto-suave);font-size:12px;margin-top:28px">
+          ${esc(e.email_rodape || 'Convite pessoal e intransferível · ' + e.nome)}</p>
+        <div style="text-align:center;margin-top:14px">
+          <img src="/logo-azul.png" alt="Mais Corporativo" style="height:28px;opacity:.92">
+        </div>
+      `;
+
+      desenharConfirmacao(c.status);
+    })();
+
+    function desenharConfirmacao(status) {
+      const area = document.getElementById('area-confirmar');
+      if (status === 'checkin') {
+        area.innerHTML = `<div class="aviso-caixa aviso-ok">✅ Presença registrada no evento. Bem-vindo(a)!</div>`;
+      } else if (status === 'confirmado') {
+        area.innerHTML = `<div class="aviso-caixa aviso-ok">✅ Presença confirmada. Até lá!</div>`;
+      } else {
+        area.innerHTML = `<button class="botao-ouro" id="btn-confirmar" style="font-size:16px;padding:14px 34px">Confirmar minha presença</button>`;
+        document.getElementById('btn-confirmar').onclick = async () => {
+          try {
+            const r = await api('/api/convite/' + encodeURIComponent(token) + '/confirmar', { method: 'POST' });
+            desenharConfirmacao('confirmado');
+          } catch (e) {
+            area.innerHTML = `<div class="aviso-caixa aviso-erro">${esc(e.message)}</div>`;
+          }
+        };
+      }
+    }
+  </script>
+</body>
+</html>

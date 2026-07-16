@@ -1,0 +1,16 @@
+# Segredos e configuração local
+.env
+
+# Banco de dados e uploads (dados reais — nunca versionar)
+data/
+
+# Certificados locais (HTTPS de desenvolvimento)
+certs/
+
+# Dependências e pacotes
+node_modules/
+dist/
+
+# Backup da interface antiga (referência local)
+public/_backup-ui/
+.claude/

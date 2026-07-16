@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Área do Convidado Principal — Sistema de Convites</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-marca"><img src="/logo-azul.png" alt="Mais Corporativo"></div>
+    <div class="sidebar-rotulo">Área do convidado</div>
+    <nav class="abas" id="abas">
+      <button data-secao="evento" class="ativa">
+        <svg class="icone" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>O evento</button>
+      <button data-secao="convidados">
+        <svg class="icone" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Meus convidados</button>
+      <button data-secao="mapa">
+        <svg class="icone" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>Mapa das mesas</button>
+    </nav>
+    <div class="sidebar-rodape">Mais Corporativo · Convites</div>
+  </aside>
+  <div class="sidebar-veu" id="sidebar-veu"></div>
+
+  <div class="area-principal">
+    <header class="topbar">
+      <button class="btn-menu-mobile" id="btn-menu-mobile" type="button" aria-label="Abrir menu">
+        <svg class="icone" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-titulo">
+        <span class="trilha" id="titulo-evento">Convites</span>
+        <strong id="titulo-secao">O evento</strong>
+      </div>
+      <span class="esp"></span>
+      <div class="menu-usuario" id="menu-usuario">
+        <button class="menu-usuario-gatilho" id="btn-menu-usuario" type="button" aria-haspopup="true">
+          <span class="avatar" id="avatar-usuario">…</span>
+          <span class="menu-usuario-nome"><span id="nome-usuario-vis">Carregando…</span><small id="papel-usuario-vis"></small></span>
+          <svg class="icone seta" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="menu-suspenso" id="menu-suspenso-usuario">
+          <span class="usuario-logado" id="nome-empresa"></span>
+          <button class="item-menu" id="btn-trocar-senha">
+            <svg class="icone" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Trocar senha</button>
+          <button class="item-menu perigo" id="btn-sair">
+            <svg class="icone" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sair</button>
+        </div>
+      </div>
+    </header>
+
+  <main class="conteudo">
+    <!-- ═══ O EVENTO ═══ -->
+    <section class="secao ativa" id="secao-evento">
+      <div id="aviso-prazo"></div>
+      <div class="painel" id="painel-evento">
+        <div class="esqueleto-bloco" style="height:22px;width:40%;margin-bottom:14px"></div>
+        <div class="esqueleto-bloco" style="height:14px;width:90%;margin-bottom:8px"></div>
+        <div class="esqueleto-bloco" style="height:14px;width:75%"></div>
+      </div>
+      <div class="painel">
+        <h2>Como chegar</h2>
+        <div class="mapa-embed"><iframe id="mapa-google" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+      </div>
+      <div class="painel" id="painel-hoteis"></div>
+    </section>
+
+    <!-- ═══ MEUS CONVIDADOS ═══ -->
+    <section class="secao" id="secao-convidados">
+      <div class="cartoes-stats" id="stats-cota">
+        <div class="stat"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+        <div class="stat"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+        <div class="stat"><div class="esqueleto-bloco"></div><div class="esqueleto-bloco"></div></div>
+      </div>
+
+      <div class="painel">
+        <h2>Dados do responsável</h2>
+        <p>Preencha seus dados para confirmar sua própria inscrição no evento.</p>
+        <form id="form-perfil">
+          <div class="linha-flex">
+            <div><label>Nome completo *</label><input name="nome" required></div>
+            <div><label>Cargo *</label><input name="cargo" required></div>
+          </div>
+          <div class="linha-flex">
+            <div><label>E-mail</label><input name="email" type="email"></div>
+            <div><label>Telefone / WhatsApp</label><input name="telefone" placeholder="(11) 99999-9999"></div>
+          </div>
+          <br>
+          <button type="submit" class="botao-ouro">Salvar meus dados</button>
+        </form>
+      </div>
+
+      <div class="painel">
+        <h2>Inscrever convidado</h2>
+        <p class="aviso-caixa aviso-info">Ao inscrever, o convite é <strong>enviado automaticamente</strong>
+           (e-mail e/ou WhatsApp) e consome 1 convite da sua cota. Se trocar o contato depois,
+           o convite é reenviado para os novos dados.</p>
+        <form id="form-convidado">
+          <div class="linha-flex">
+            <div><label>Nome *</label><input name="nome" required></div>
+            <div><label>E-mail</label><input name="email" type="email"></div>
+            <div><label>Telefone / WhatsApp</label><input name="telefone"></div>
+            <div class="curto"><button type="submit" class="botao-ouro">Inscrever</button></div>
+          </div>
+        </form>
+      </div>
+
+      <div class="painel">
+        <h2>Convidados inscritos</h2>
+        <p>O convite é disparado automaticamente na inscrição. Use os botões apenas para <strong>reenviar</strong>.</p>
+        <div class="rolagem-x"><table class="tabela" id="tabela-convidados">
+          <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
+          <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ═══ MAPA ═══ -->
+    <section class="secao" id="secao-mapa">
+      <div class="painel">
+        <h2>Mapa das mesas</h2>
+        <p>Passe o mouse sobre uma mesa para ver quem está acomodado nela.</p>
+        <div id="mapa-mesas" style="height:520px"></div>
+      </div>
+    </section>
+  </main>
+  </div>
+
+  <script src="/js/comum.js"></script>
+  <script src="/js/mapa.js"></script>
+  <script src="/js/empresa.js"></script>
+  <script>
+    // ── Aprimoramentos visuais do novo layout (aditivo — não altera o comportamento do empresa.js) ──
+    (function () {
+      const TITULOS = { evento: 'O evento', convidados: 'Meus convidados', mapa: 'Mapa das mesas' };
+      const abas = document.getElementById('abas');
+      const tituloEl = document.getElementById('titulo-secao');
+      function sincronizarTitulo() {
+        const ativa = abas.querySelector('button.ativa');
+        if (ativa && TITULOS[ativa.dataset.secao]) tituloEl.textContent = TITULOS[ativa.dataset.secao];
+      }
+      abas.addEventListener('click', () => setTimeout(sincronizarTitulo, 0));
+      sincronizarTitulo();
+
+      // Menu lateral no mobile
+      const fecharMenu = () => document.body.classList.remove('menu-aberto');
+      document.getElementById('btn-menu-mobile').addEventListener('click', () => document.body.classList.toggle('menu-aberto'));
+      document.getElementById('sidebar-veu').addEventListener('click', fecharMenu);
+      abas.addEventListener('click', e => { if (e.target.closest('button[data-secao]')) fecharMenu(); });
+
+      // Dropdown do usuário
+      const menu = document.getElementById('menu-usuario');
+      document.getElementById('btn-menu-usuario').addEventListener('click', e => {
+        e.stopPropagation();
+        menu.classList.toggle('aberto');
+      });
+      document.addEventListener('click', e => { if (!menu.contains(e.target)) menu.classList.remove('aberto'); });
+      document.getElementById('menu-suspenso-usuario').addEventListener('click', e => {
+        if (e.target.closest('.item-menu')) menu.classList.remove('aberto');
+      });
+
+      // Avatar com iniciais — espelha o que o empresa.js escreve em #nome-empresa
+      const origem = document.getElementById('nome-empresa');
+      const nomeVis = document.getElementById('nome-usuario-vis');
+      const papelVis = document.getElementById('papel-usuario-vis');
+      const avatar = document.getElementById('avatar-usuario');
+      function espelharUsuario() {
+        const texto = origem.textContent.replace(/[^\p{L}\p{N}\s·@._-]/gu, '').trim();
+        if (!texto) return;
+        const [nome, papel] = texto.split('·').map(s => (s || '').trim());
+        if (nome) {
+          nomeVis.textContent = nome;
+          const partes = nome.split(/\s+/).filter(Boolean);
+          avatar.textContent = (((partes[0] || '')[0] || '') + ((partes[1] || '')[0] || '')).toUpperCase() || '•';
+        }
+        if (papel) papelVis.textContent = papel;
+      }
+      new MutationObserver(espelharUsuario).observe(origem, { childList: true, subtree: true, characterData: true });
+      espelharUsuario();
+    })();
+  </script>
+</body>
+</html>

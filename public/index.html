@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistema de Convites — Acesso</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="tela-login">
+    <div class="login-marca">
+      <img class="logo" src="/logo-branco.png" alt="Mais Corporativo">
+      <div class="frase">
+        <div class="rotulo">Plataforma de Convites</div>
+        <h1>Convites, confirmações e credenciamento em um só lugar.</h1>
+        <p>Gerencie eventos corporativos de ponta a ponta: cotas por empresa,
+           envio por e-mail e WhatsApp, mapa de mesas e check-in por QR code.</p>
+      </div>
+      <div class="rodape">© Mais Corporativo</div>
+    </div>
+    <div class="login-form">
+      <div class="caixa">
+        <img class="logo-mobile" src="/logo-azul.png" alt="Mais Corporativo">
+        <h2>Acesse sua conta</h2>
+        <p class="sub">Entre com as credenciais enviadas pela organização.</p>
+        <form id="form-login">
+          <label for="username">Login</label>
+          <input id="username" name="username" autocomplete="username" required autofocus>
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <div id="erro-login" class="aviso-caixa aviso-erro oculto"></div>
+          <br>
+          <button type="submit" class="botao-ouro largura-total">Entrar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script src="/js/comum.js"></script>
+  <script>
+    document.getElementById('form-login').addEventListener('submit', async e => {
+      e.preventDefault();
+      const erroEl = document.getElementById('erro-login');
+      erroEl.classList.add('oculto');
+      try {
+        const r = await api('/api/login', {
+          method: 'POST',
+          body: {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value,
+          },
+        });
+        location.href = (r.role === 'master' || r.role === 'admin_evento') ? '/admin.html' : '/empresa.html';
+      } catch (err) {
+        erroEl.textContent = err.message;
+        erroEl.classList.remove('oculto');
+      }
+    });
+  </script>
+</body>
+</html>
