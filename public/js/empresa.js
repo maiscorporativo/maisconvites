@@ -110,7 +110,8 @@ document.getElementById('form-convidado').addEventListener('submit', async ev =>
   const f = ev.target;
   try {
     const r = await api('/api/empresa/convidados', { method: 'POST', body: {
-      nome: f.elements.nome.value, email: f.elements.email.value, telefone: f.elements.telefone.value,
+      nome: f.elements.nome.value, cargo: f.elements.cargo.value,
+      email: f.elements.email.value, telefone: f.elements.telefone.value,
     }});
     f.reset();
     toast('Convidado inscrito!', 'ok');
@@ -159,6 +160,7 @@ window.editarConvidadoEmpresa = (id) => {
   const m = abrirModal(`
     <h3>Editar convidado</h3>
     <label>Nome</label><input id="ee-nome" value="${esc(c.nome)}">
+    <label>Cargo</label><input id="ee-cargo" value="${esc(c.cargo || '')}">
     <div class="linha-flex">
       <div><label>E-mail</label><input id="ee-email" value="${esc(c.email)}"></div>
       <div><label>Telefone/WhatsApp</label><input id="ee-telefone" value="${esc(c.telefone)}"></div>
@@ -169,6 +171,7 @@ window.editarConvidadoEmpresa = (id) => {
     try {
       const r = await api(`/api/empresa/convidados/${id}`, { method: 'PUT', body: {
         nome: m.querySelector('#ee-nome').value,
+        cargo: m.querySelector('#ee-cargo').value,
         email: m.querySelector('#ee-email').value,
         telefone: m.querySelector('#ee-telefone').value,
       }});

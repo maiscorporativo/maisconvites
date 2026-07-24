@@ -93,9 +93,9 @@ router.post('/convidados', async (req, res) => {
     return res.status(400).json({ erro: `Sua cota de ${usuario.cota} convites já foi totalmente utilizada.` });
   }
   const r = db.prepare(`
-    INSERT INTO convidados (evento_id, empresa_id, tipo, nome, email, telefone, token, codigo)
-    VALUES (?,?,'convidado',?,?,?,?,?)
-  `).run(evento.id, usuario.id, b.nome, b.email || '', b.telefone || '', novoToken(), novoCodigo());
+    INSERT INTO convidados (evento_id, empresa_id, tipo, nome, cargo, email, telefone, token, codigo)
+    VALUES (?,?,'convidado',?,?,?,?,?,?)
+  `).run(evento.id, usuario.id, b.nome, b.cargo || '', b.email || '', b.telefone || '', novoToken(), novoCodigo());
   const id = Number(r.lastInsertRowid);
   const envio = await enviarConviteAutomatico(evento, convidadoComMesa(id));
   res.json({ ok: true, id, envio });
@@ -109,10 +109,13 @@ router.put('/convidados/:id', async (req, res) => {
   const c = db.prepare(`SELECT * FROM convidados WHERE id=? AND empresa_id=?`).get(req.params.id, usuario.id);
   if (!c) return res.status(404).json({ erro: 'Convidado não encontrado.' });
   if (prazoEncerrado(evento)) return res.status(400).json({ erro: 'O prazo para alterações foi encerrado.' });
-  const novo = { nome: b.nome ?? c.nome, email: b.email ?? c.email, telefone: b.telefone ?? c.telefone };
+  const novo = {
+    nome: b.nome ?? c.nome, cargo: b.cargo ?? c.cargo,
+    email: b.email ?? c.email, telefone: b.telefone ?? c.telefone,
+  };
   const mudouContato = novo.nome !== c.nome || novo.email !== c.email || novo.telefone !== c.telefone;
-  db.prepare(`UPDATE convidados SET nome=?, email=?, telefone=? WHERE id=?`)
-    .run(novo.nome, novo.email, novo.telefone, c.id);
+  db.prepare(`UPDATE convidados SET nome=?, cargo=?, email=?, telefone=? WHERE id=?`)
+    .run(novo.nome, novo.cargo, novo.email, novo.telefone, c.id);
   let envio = null;
   if (mudouContato) envio = await enviarConviteAutomatico(evento, convidadoComMesa(c.id));
   res.json({ ok: true, envio });
