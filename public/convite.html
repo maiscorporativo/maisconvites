@@ -102,6 +102,17 @@
       `;
 
       desenharConfirmacao(c.status);
+
+      // Botão "Confirmar presença" do e-mail (?confirmar=1): confirma automaticamente ao
+      // abrir a página — só dispara via este script (nunca pela requisição GET do link em
+      // si), então pré-carregamento do link por scanners de segurança de e-mail é inofensivo.
+      const params = new URLSearchParams(location.search);
+      if (params.get('confirmar') === '1') {
+        history.replaceState(null, '', location.pathname); // evita reconfirmar num refresh
+        if (c.status !== 'confirmado' && c.status !== 'checkin') {
+          document.getElementById('btn-confirmar')?.click();
+        }
+      }
     })();
 
     function desenharConfirmacao(status) {

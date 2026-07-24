@@ -26,6 +26,14 @@ function linkConvite(token) {
   return `${BASE_URL()}/convite/${token}`;
 }
 
+// Link de confirmação em 1 clique: abre o convite digital e já confirma a presença
+// automaticamente (a confirmação em si só ocorre via JS no carregamento da página,
+// nunca pela simples requisição GET do link — protege contra pré-carregamento de
+// links por scanners de segurança de e-mail).
+function linkConfirmar(token) {
+  return `${linkConvite(token)}?confirmar=1`;
+}
+
 function infoAssento(convidado, evento) {
   if (evento && evento.mapa_mesas === 0) return null; // mapa de mesas desativado no evento
   if (convidado.mesa_numero != null && convidado.cadeira != null) {
@@ -72,6 +80,7 @@ function textoConvite(evento, convidado, credenciais) {
 // bannerDataUrl: imagem de cabeçalho personalizada (opcional, data URL)
 function htmlConvite(evento, convidado, credenciais, qrDataUrl, bannerDataUrl) {
   const assento = infoAssento(convidado, evento);
+  const podeConfirmar = !['confirmado', 'checkin', 'cancelado'].includes(convidado.status);
   let hoteis = [];
   try { hoteis = JSON.parse(evento.hoteis || '[]'); } catch {}
   let facilities = [];
@@ -104,7 +113,12 @@ function htmlConvite(evento, convidado, credenciais, qrDataUrl, bannerDataUrl) {
     <div style="text-align:center;padding:28px 0 8px;">
       ${qrDataUrl ? `<img src="${qrDataUrl}" alt="QR code do convite" width="180" height="180" style="border:1px solid #d9e2ee;border-radius:8px;">` : ''}
       <p style="font-size:13px;color:#64748b;margin:12px 0 0;">Apresente este QR code na recepção para o credenciamento.</p>
-      <p style="margin:18px 0 0;"><a href="${linkConvite(convidado.token)}" style="display:inline-block;background:#f7ad40;color:#002042;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:15px;font-weight:bold;">Abrir meu convite digital</a></p>
+      ${podeConfirmar ? `
+      <p style="margin:22px 0 0;"><a href="${linkConfirmar(convidado.token)}" style="display:inline-block;background-color:#e84e27;color:#ffffff;text-decoration:none;padding:14px 34px;border-radius:8px;font-size:16px;font-weight:bold;">✅ Confirmar minha presença</a></p>
+      ` : `
+      <p style="margin:22px 0 0;font-size:14px;color:#15803d;font-weight:bold;">✅ ${convidado.status === 'checkin' ? 'Presença já registrada no evento.' : 'Presença confirmada. Até lá!'}</p>
+      `}
+      <p style="margin:14px 0 0;"><a href="${linkConvite(convidado.token)}" style="display:inline-block;background-color:#f7ad40;color:#002042;text-decoration:none;padding:10px 24px;border-radius:6px;font-size:13px;font-weight:600;">Abrir meu convite digital</a></p>
     </div>
     ${hoteis.length ? `<h3 style="font-size:15px;color:#e84e27;border-bottom:1px solid #d9e2ee;padding-bottom:6px;margin:28px 0 12px;">🏨 Hotéis próximos</h3>
     <ul style="font-size:14px;line-height:1.8;padding-left:18px;margin:0;">${hoteis.map(h => `<li><strong>${h.nome}</strong>${h.distancia ? ` (${h.distancia})` : ''}${h.endereco ? ` — ${h.endereco}` : ''}${h.telefone ? ` — ${h.telefone}` : ''}</li>`).join('')}</ul>` : ''}
@@ -125,4 +139,4 @@ function htmlConvite(evento, convidado, credenciais, qrDataUrl, bannerDataUrl) {
 </body></html>`;
 }
 
-module.exports = { textoConvite, htmlConvite, linkConvite, dataBr };
+module.exports = { textoConvite, htmlConvite, linkConvite, linkConfirmar, dataBr };

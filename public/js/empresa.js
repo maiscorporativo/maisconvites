@@ -105,9 +105,15 @@ document.getElementById('form-perfil').addEventListener('submit', async ev => {
   } catch (e) { toast(e.message, 'erro'); }
 });
 
+let inscrevendoConvidado = false;
 document.getElementById('form-convidado').addEventListener('submit', async ev => {
   ev.preventDefault();
+  if (inscrevendoConvidado) return; // trava contra duplo clique/Enter repetido enquanto o envio roda
+  inscrevendoConvidado = true;
   const f = ev.target;
+  const btn = f.querySelector('button[type=submit]');
+  btn.disabled = true;
+  btn.classList.add('carregando');
   try {
     const r = await api('/api/empresa/convidados', { method: 'POST', body: {
       nome: f.elements.nome.value, cargo: f.elements.cargo.value,
@@ -118,6 +124,11 @@ document.getElementById('form-convidado').addEventListener('submit', async ev =>
     tratarEnvioAutomatico(r.envio); // convite dispara automaticamente na inscrição
     recarregar();
   } catch (e) { toast(e.message, 'erro'); }
+  finally {
+    inscrevendoConvidado = false;
+    btn.disabled = false;
+    btn.classList.remove('carregando');
+  }
 });
 
 function desenharConvidados(convidados, evento) {
