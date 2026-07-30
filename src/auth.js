@@ -32,4 +32,16 @@ function podeAcessarEvento(usuario, eventoId) {
   return Number(eventoId) === Number(usuario.evento_id);
 }
 
-module.exports = { exigirLogin, exigirMaster, exigirAdminEvento, exigirConvidadoPrincipal, podeAcessarEvento };
+// Identificação legível do usuário logado, para registros de auditoria (ex.: quem cancelou um convidado).
+function descreverUsuario(usuario) {
+  if (!usuario) return 'sistema';
+  if (usuario.role === 'master') return `Master (${usuario.username})`;
+  if (usuario.role === 'admin_evento') return `Admin do evento — ${usuario.nome || usuario.username}`;
+  if (usuario.role === 'convidado_principal') return `Convidado principal — ${usuario.empresa_nome || usuario.nome || usuario.username}`;
+  return usuario.username || 'sistema';
+}
+
+module.exports = {
+  exigirLogin, exigirMaster, exigirAdminEvento, exigirConvidadoPrincipal, podeAcessarEvento,
+  descreverUsuario,
+};

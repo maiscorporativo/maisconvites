@@ -53,18 +53,51 @@ function blocoHoteis(evento) {
   return `\n🏨 *Hotéis próximos:*\n${linhas}\n`;
 }
 
+// Campos disponíveis no modelo de mensagem personalizado do WhatsApp (aba Evento do painel)
+function valoresPlaceholder(evento, convidado) {
+  return {
+    nome: convidado.nome,
+    evento: evento.nome,
+    data: dataBr(evento.data_evento),
+    hora: evento.hora_evento || '',
+    local: evento.local_nome,
+    endereco: evento.endereco,
+    traje: evento.dress_code || '',
+    mesa: infoAssento(convidado, evento) || '',
+    link: linkConvite(convidado.token),
+    codigo: convidado.codigo || '',
+  };
+}
+
+function substituirPlaceholders(modelo, valores) {
+  return modelo.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, chave) => (valores[chave] ?? ''));
+}
+
 // Mensagem de texto (WhatsApp / corpo simples)
 function textoConvite(evento, convidado, credenciais) {
   const assento = infoAssento(convidado, evento);
-  let msg = `🥂 *Convite — ${evento.nome}*\n\n`;
-  msg += `Olá, *${convidado.nome}*!\n\n`;
-  msg += `${evento.email_texto || `Você está convidado(a) para o *${evento.nome}*.`}\n\n`;
-  msg += `📅 *Data:* ${dataBr(evento.data_evento)} às ${evento.hora_evento}\n`;
-  msg += `📍 *Local:* ${evento.local_nome} — ${evento.endereco}\n`;
-  if (evento.dress_code) msg += `👔 *Traje:* ${evento.dress_code}\n`;
-  if (assento) msg += `🪑 *Seu lugar:* ${assento}\n`;
-  msg += `\n🎫 *Seu convite digital com QR code:*\n${linkConvite(convidado.token)}\n`;
-  msg += `\nApresente o QR code na recepção para o credenciamento.\n`;
+  const modelo = (evento.whatsapp_mensagem || '').trim();
+  let msg;
+  if (modelo) {
+    // Modelo personalizado pelo organizador (placeholders {{...}}); o link do convite
+    // é garantido mesmo que o modelo não o inclua — essencial para o credenciamento.
+    const valores = valoresPlaceholder(evento, convidado);
+    msg = substituirPlaceholders(modelo, valores).trim() + '\n';
+    if (!msg.includes(valores.link)) {
+      msg += `\n🎫 *Seu convite digital com QR code:*\n${valores.link}\n`;
+      msg += `\nApresente o QR code na recepção para o credenciamento.\n`;
+    }
+  } else {
+    msg = `🥂 *Convite — ${evento.nome}*\n\n`;
+    msg += `Olá, *${convidado.nome}*!\n\n`;
+    msg += `${evento.email_texto || `Você está convidado(a) para o *${evento.nome}*.`}\n\n`;
+    msg += `📅 *Data:* ${dataBr(evento.data_evento)} às ${evento.hora_evento}\n`;
+    msg += `📍 *Local:* ${evento.local_nome} — ${evento.endereco}\n`;
+    if (evento.dress_code) msg += `👔 *Traje:* ${evento.dress_code}\n`;
+    if (assento) msg += `🪑 *Seu lugar:* ${assento}\n`;
+    msg += `\n🎫 *Seu convite digital com QR code:*\n${linkConvite(convidado.token)}\n`;
+    msg += `\nApresente o QR code na recepção para o credenciamento.\n`;
+  }
   msg += blocoHoteis(evento);
   if (credenciais) {
     msg += `\n🔐 *Seu acesso à plataforma* (para gerenciar os convites da sua empresa):\n`;
@@ -139,4 +172,46 @@ function htmlConvite(evento, convidado, credenciais, qrDataUrl, bannerDataUrl) {
 </body></html>`;
 }
 
-module.exports = { textoConvite, htmlConvite, linkConvite, linkConfirmar, dataBr };
+// ── Mensagem de cancelamento (enviada ao excluir um convidado da lista) ──
+
+const MODELO_CANCELAMENTO_PADRAO =
+`Prezado(a) {{nome}},
+
+Informamos que o seu convite para o {{evento}}, agendado para {{data}}, foi cancelado por
+solicitação do responsável pela sua inscrição.
+
+Agradecemos a atenção e nos colocamos à disposição para qualquer esclarecimento.
+
+Atenciosamente,
+{{evento}}`;
+
+function textoCancelamento(evento, convidado) {
+  const modelo = (evento.mensagem_cancelamento || '').trim() || MODELO_CANCELAMENTO_PADRAO;
+  return substituirPlaceholders(modelo, valoresPlaceholder(evento, convidado));
+}
+
+function htmlCancelamento(evento, convidado) {
+  const texto = textoCancelamento(evento, convidado);
+  return `<!doctype html>
+<html lang="pt-BR"><body style="margin:0;padding:0;background:#f2f5f9;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#1c2733;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
+  <tr><td style="background:#002042;padding:32px;text-align:center;">
+    ${LOGO_BRANCO ? `<img src="${LOGO_BRANCO}" alt="Mais Corporativo" height="32" style="height:32px;margin-bottom:12px;">` : ''}
+    <div style="color:#f7ad40;font-size:12px;letter-spacing:3px;text-transform:uppercase;">Aviso</div>
+    <div style="color:#eef4fb;font-size:22px;font-weight:700;margin-top:8px;">Cancelamento de convite</div>
+  </td></tr>
+  <tr><td style="padding:36px 40px;font-size:15px;line-height:1.7;white-space:pre-line;">${texto}</td></tr>
+  <tr><td style="background:#f6f8fb;border-top:1px solid #d9e2ee;padding:18px;text-align:center;font-size:12px;color:#8ba0b8;">
+    ${evento.nome}
+    ${LOGO_AZUL ? `<div style="margin-top:10px;"><img src="${LOGO_AZUL}" alt="Mais Corporativo" height="24" style="height:24px;"></div>` : ''}
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+module.exports = {
+  textoConvite, htmlConvite, linkConvite, linkConfirmar, dataBr,
+  textoCancelamento, htmlCancelamento,
+};

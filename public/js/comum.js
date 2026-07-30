@@ -42,6 +42,13 @@ function dataBr(iso) {
   return `${d}/${m}/${a}`;
 }
 
+// Formata "YYYY-MM-DD HH:MM:SS" (datetime('now','localtime') do SQLite) em "DD/MM/AAAA HH:MM"
+function dataHoraBr(iso) {
+  if (!iso) return '—';
+  const [data, hora] = String(iso).split(' ');
+  return `${dataBr(data)}${hora ? ' ' + hora.slice(0, 5) : ''}`;
+}
+
 function seloStatus(status) {
   const nomes = { pendente: 'Pendente', enviado: 'Convite enviado', confirmado: 'Confirmado', checkin: 'Check-in ✓', cancelado: 'Cancelado' };
   return `<span class="selo selo-${esc(status)}">${nomes[status] || esc(status)}</span>`;

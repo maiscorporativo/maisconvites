@@ -8,7 +8,7 @@ const path = require('node:path');
 const nodemailer = require('nodemailer');
 const QRCode = require('qrcode');
 const { db, UPLOADS_DIR } = require('./db');
-const { textoConvite, htmlConvite, linkConvite } = require('./mensagens');
+const { textoConvite, htmlConvite, linkConvite, textoCancelamento, htmlCancelamento } = require('./mensagens');
 const evolution = require('./evolution');
 
 // Banner do evento como data URL (embutido no e-mail; nodemailer converte em anexo cid)
@@ -232,4 +232,88 @@ async function enviarConviteAutomatico(evento, convidado, credenciais = null) {
   return resultado;
 }
 
-module.exports = { enviarConvite, enviarConviteAutomatico, carregarConfigEnvio, qrDoConvite };
+/**
+ * Notifica o convidado do cancelamento do seu convite (chamado ao excluí-lo da lista,
+ * ex.: para substituí-lo por outro). Melhor esforço: tenta e-mail e/ou WhatsApp, o que
+ * houver de contato cadastrado; nunca lança erro (a exclusão não pode ficar bloqueada
+ * por uma falha de envio). Função independente de enviarConvite/enviarConviteAutomatico
+ * para não alterar o fluxo de envio de convites já em produção.
+ */
+async function enviarCancelamentoAutomatico(evento, convidado) {
+  const config = carregarConfigEnvio(evento.id);
+  const resultado = { email: null, whatsapp: null, algum_enviado: false };
+
+  if (convidado.email) {
+    const texto = textoCancelamento(evento, convidado);
+    const html = htmlCancelamento(evento, convidado);
+    if (config.smtp) {
+      try {
+        await criarTransporte(config.smtp).sendMail({
+          from: config.smtp.from, replyTo: config.smtp.replyTo, to: convidado.email,
+          subject: `Cancelamento do convite — ${evento.nome}`, text: texto, html, attachDataUrls: true,
+        });
+        resultado.email = { ok: true, modo: 'enviado', mensagem: `Aviso de cancelamento enviado para ${convidado.email}.` };
+      } catch (e) {
+        resultado.email = { ok: false, erro: 'Falha no envio do e-mail: ' + e.message };
+      }
+    } else {
+      resultado.email = {
+        ok: true, modo: 'simulado',
+        mensagem: 'SMTP não configurado. Mensagem gerada para envio manual.',
+        assunto: `Cancelamento do convite — ${evento.nome}`, destinatario: convidado.email, texto,
+      };
+    }
+  }
+
+  if (convidado.telefone) {
+    const texto = textoCancelamento(evento, convidado);
+    const numero = soDigitos(convidado.telefone);
+    let enviado = null;
+
+    for (const nome of config.instancias) {
+      const estado = await evolution.estadoInstancia(nome);
+      if (estado !== 'open') continue;
+      try {
+        await evolution.enviarTexto(nome, numero, texto);
+        enviado = { ok: true, modo: 'enviado', mensagem: `Aviso de cancelamento enviado para +${numero}.` };
+      } catch (e) {
+        enviado = { ok: false, erro: 'Falha na Evolution API: ' + e.message };
+      }
+      break;
+    }
+
+    if (!enviado && whatsappApiConfigurada()) {
+      try {
+        const resp = await fetch(`https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_ID}/messages`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp', to: numero, type: 'text', text: { body: texto },
+          }),
+        });
+        const dados = await resp.json();
+        if (!resp.ok) throw new Error(JSON.stringify(dados.error || dados));
+        enviado = { ok: true, modo: 'enviado', mensagem: `Aviso de cancelamento enviado para +${numero}.` };
+      } catch (e) {
+        enviado = { ok: false, erro: 'Falha na API do WhatsApp: ' + e.message };
+      }
+    }
+
+    if (!enviado) {
+      const link = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+      enviado = { ok: true, modo: 'link', mensagem: 'Link do WhatsApp gerado — abra para revisar e enviar.', link };
+    }
+    resultado.whatsapp = enviado;
+  }
+
+  resultado.algum_enviado = !!(resultado.email?.ok || resultado.whatsapp?.ok);
+  return resultado;
+}
+
+module.exports = {
+  enviarConvite, enviarConviteAutomatico, enviarCancelamentoAutomatico,
+  carregarConfigEnvio, qrDoConvite,
+};

@@ -1,8 +1,8 @@
 'use strict';
 const express = require('express');
 const { db, novoToken, novoCodigo } = require('../db');
-const { exigirConvidadoPrincipal } = require('../auth');
-const { enviarConvite, enviarConviteAutomatico } = require('../envio');
+const { exigirConvidadoPrincipal, descreverUsuario } = require('../auth');
+const { enviarConvite, enviarConviteAutomatico, enviarCancelamentoAutomatico } = require('../envio');
 
 const router = express.Router();
 router.use(exigirConvidadoPrincipal);
@@ -121,14 +121,20 @@ router.put('/convidados/:id', async (req, res) => {
   res.json({ ok: true, envio });
 });
 
-router.delete('/convidados/:id', (req, res) => {
+router.delete('/convidados/:id', async (req, res) => {
   const { usuario, evento } = contexto(req);
   const c = db.prepare(`SELECT * FROM convidados WHERE id=? AND empresa_id=?`).get(req.params.id, usuario.id);
   if (!c) return res.status(404).json({ erro: 'Convidado não encontrado.' });
   if (c.tipo === 'responsavel') return res.status(400).json({ erro: 'A inscrição do responsável não pode ser excluída por aqui. Contate a organização.' });
+  if (c.status === 'cancelado') return res.status(400).json({ erro: 'Este convidado já está cancelado.' });
   if (prazoEncerrado(evento)) return res.status(400).json({ erro: 'O prazo para alterações foi encerrado. Contate a organização.' });
-  db.prepare(`DELETE FROM convidados WHERE id=?`).run(c.id);
-  res.json({ ok: true });
+  const envio = (c.email || c.telefone) ? await enviarCancelamentoAutomatico(evento, c) : null;
+  db.prepare(`
+    UPDATE convidados SET status='cancelado', mesa_id=NULL, cadeira=NULL,
+      cancelado_em=datetime('now','localtime'), cancelado_por=?
+    WHERE id=?
+  `).run(descreverUsuario(usuario), c.id);
+  res.json({ ok: true, envio });
 });
 
 // Disparo do convite (e-mail / WhatsApp) para um convidado da empresa

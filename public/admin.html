@@ -152,6 +152,44 @@
           <label>Texto de abertura (padrão: descrição do evento)</label>
           <textarea name="email_texto" placeholder="Mensagem de boas-vindas que abre o convite…"></textarea>
 
+          <h3>Mensagem do WhatsApp</h3>
+          <p style="margin:0 0 10px;color:var(--texto-suave);font-size:13px">
+            Deixe em branco para usar a mensagem padrão do sistema. Para personalizar, use os campos
+            entre chaves duplas abaixo — cada um é substituído automaticamente para cada convidado:
+            <code>{{nome}}</code> <code>{{evento}}</code> <code>{{data}}</code> <code>{{hora}}</code>
+            <code>{{local}}</code> <code>{{endereco}}</code> <code>{{traje}}</code> <code>{{mesa}}</code>
+            <code>{{link}}</code> <code>{{codigo}}</code>. O link do convite com QR code e as credenciais
+            de acesso (para convidados principais) continuam sendo enviados automaticamente mesmo que
+            você não inclua <code>{{link}}</code> no texto.
+          </p>
+          <textarea name="whatsapp_mensagem" rows="9" placeholder="🥂 Convite — {{evento}}
+
+Olá, {{nome}}!
+
+Você está convidado(a) para o {{evento}}.
+
+📅 Data: {{data}} às {{hora}}
+📍 Local: {{local}} — {{endereco}}
+👔 Traje: {{traje}}
+🪑 Seu lugar: {{mesa}}"></textarea>
+
+          <h3>Mensagem de cancelamento</h3>
+          <p style="margin:0 0 10px;color:var(--texto-suave);font-size:13px">
+            Enviada automaticamente (e-mail e/ou WhatsApp) quando um convidado é excluído da lista —
+            por exemplo, ao substituí-lo por outro. Deixe em branco para usar a mensagem padrão.
+            Campos disponíveis: <code>{{nome}}</code> <code>{{evento}}</code> <code>{{data}}</code>
+            <code>{{hora}}</code> <code>{{local}}</code> <code>{{endereco}}</code>.
+          </p>
+          <textarea name="mensagem_cancelamento" rows="8" placeholder="Prezado(a) {{nome}},
+
+Informamos que o seu convite para o {{evento}}, agendado para {{data}}, foi cancelado por
+solicitação do responsável pela sua inscrição.
+
+Agradecemos a atenção e nos colocamos à disposição para qualquer esclarecimento.
+
+Atenciosamente,
+{{evento}}"></textarea>
+
           <br><br>
           <div class="linha-flex">
             <button type="submit" class="botao-ouro">Salvar evento</button>
@@ -280,7 +318,12 @@
         </div>
       </div>
       <div class="painel">
-        <h2>Convidados principais</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+          <h2 style="margin:0">Convidados principais</h2>
+          <button type="button" class="botao-claro" id="btn-enviar-massa-empresas">
+            <svg class="icone" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Enviar credenciais em massa</button>
+        </div>
         <div class="rolagem-x"><table class="tabela" id="tabela-empresas">
           <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
           <tr><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td><td><div class="esqueleto-bloco"></div></td></tr>
@@ -307,6 +350,7 @@
         <h2>Todos os convidados</h2>
         <div class="linha-flex">
           <div><input id="filtro-convidados" placeholder="Filtrar por nome, empresa ou status…"></div>
+          <div class="curto"><button type="button" class="botao-claro" id="btn-filtro-cancelados">Ver cancelados</button></div>
         </div>
         <br>
         <div class="rolagem-x"><table class="tabela" id="tabela-convidados">

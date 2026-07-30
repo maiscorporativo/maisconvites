@@ -4,8 +4,8 @@ const bcrypt = require('bcryptjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const { db, novoToken, novoCodigo, gerarSenha, UPLOADS_DIR } = require('../db');
-const { exigirAdminEvento, exigirMaster, podeAcessarEvento } = require('../auth');
-const { enviarConvite, carregarConfigEnvio, qrDoConvite } = require('../envio');
+const { exigirAdminEvento, exigirMaster, podeAcessarEvento, descreverUsuario } = require('../auth');
+const { enviarConvite, enviarConviteAutomatico, enviarCancelamentoAutomatico, carregarConfigEnvio, qrDoConvite } = require('../envio');
 const evolution = require('../evolution');
 const { gerarModeloXlsx, lerPlanilha, validarLinhas } = require('../importacao');
 const { gerarRelatorioXlsx } = require('../relatorios-xlsx');
@@ -94,11 +94,12 @@ router.put('/eventos/:id', (req, res) => {
   db.prepare(`
     UPDATE eventos SET nome=?, data_evento=?, hora_evento=?, local_nome=?, endereco=?,
       descricao=?, dress_code=?, deadline=?, hoteis=?, facilities=?,
-      email_titulo=?, email_texto=?, email_rodape=? WHERE id=?
+      email_titulo=?, email_texto=?, email_rodape=?, whatsapp_mensagem=?, mensagem_cancelamento=? WHERE id=?
   `).run(b.nome, b.data_evento, b.hora_evento || '20:00', b.local_nome, b.endereco,
          b.descricao || '', b.dress_code || '', b.deadline,
          JSON.stringify(b.hoteis || []), JSON.stringify(b.facilities || []),
-         b.email_titulo || '', b.email_texto || '', b.email_rodape || '', e.id);
+         b.email_titulo || '', b.email_texto || '', b.email_rodape || '',
+         b.whatsapp_mensagem || '', b.mensagem_cancelamento || '', e.id);
   res.json({ ok: true });
 });
 
@@ -443,6 +444,43 @@ router.delete('/empresas/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// Envio em massa das credenciais de acesso: dispara automaticamente (e-mail e/ou WhatsApp,
+// o que houver cadastrado) o convite do responsável de cada convidado principal do evento —
+// o mesmo texto que sai ao clicar "enviar" individualmente na lista de Convidados.
+router.post('/eventos/:id/empresas/enviar-credenciais', async (req, res) => {
+  const evento = eventoDoEscopo(req, res, req.params.id);
+  if (!evento) return;
+  const empresas = db.prepare(`SELECT * FROM usuarios WHERE evento_id=? AND role='convidado_principal'`).all(evento.id);
+
+  const enviados = [], semContato = [], semResponsavel = [], falhas = [];
+  for (const emp of empresas) {
+    const resp = db.prepare(`
+      SELECT c.*, m.numero AS mesa_numero FROM convidados c
+      LEFT JOIN mesas m ON m.id = c.mesa_id
+      WHERE c.empresa_id=? AND c.tipo='responsavel'
+    `).get(emp.id);
+    if (!resp) { semResponsavel.push(emp.empresa_nome); continue; }
+
+    // O contato usado no envio é o do convidado (responsável); mantém sincronizado
+    // com o cadastro da empresa, que é onde o admin costuma editá-lo.
+    if (resp.email !== (emp.email || '') || resp.telefone !== (emp.telefone || '')) {
+      db.prepare(`UPDATE convidados SET email=?, telefone=? WHERE id=?`).run(emp.email || '', emp.telefone || '', resp.id);
+      resp.email = emp.email || ''; resp.telefone = emp.telefone || '';
+    }
+    if (!resp.email && !resp.telefone) { semContato.push(emp.empresa_nome); continue; }
+
+    const credenciais = { username: emp.username, senha: emp.senha_provisoria || '(já alterada pelo usuário)' };
+    try {
+      const r = await enviarConviteAutomatico(evento, resp, credenciais);
+      if (r.algum_enviado) enviados.push(emp.empresa_nome);
+      else falhas.push({ empresa: emp.empresa_nome, erro: r.email?.erro || r.whatsapp?.erro || 'Falha no envio.' });
+    } catch (e) {
+      falhas.push({ empresa: emp.empresa_nome, erro: e.message });
+    }
+  }
+  res.json({ ok: true, total: empresas.length, enviados, sem_contato: semContato, sem_responsavel: semResponsavel, falhas });
+});
+
 // Relatório em Excel (.xlsx): tipo = geral|credenciamento|empresas|presenca|mapa|etiquetas
 router.get('/eventos/:id/relatorio-xlsx', (req, res) => {
   const evento = eventoDoEscopo(req, res, req.params.id);
@@ -570,14 +608,24 @@ router.put('/convidados/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete('/convidados/:id', (req, res) => {
+// "Excluir" cancela o convidado (fica no histórico com data/hora e quem cancelou) em vez de
+// apagar a linha — permite auditar depois (ex.: alguém cancelado que ainda assim compareceu
+// ao evento) e o credenciamento continua reconhecendo e recusando o convite cancelado.
+router.delete('/convidados/:id', async (req, res) => {
   const c = linhaDoEscopo(req, res, `SELECT * FROM convidados WHERE id=?`, req.params.id, 'Convidado');
   if (!c) return;
-  if (c.tipo === 'individual' && c.status !== 'cancelado') {
+  if (c.status === 'cancelado') return res.status(400).json({ erro: 'Este convidado já está cancelado.' });
+  const evento = db.prepare(`SELECT * FROM eventos WHERE id=?`).get(c.evento_id);
+  const envio = (c.email || c.telefone) ? await enviarCancelamentoAutomatico(evento, c) : null;
+  if (c.tipo === 'individual') {
     db.prepare(`UPDATE eventos SET pool_individual = pool_individual + 1 WHERE id=?`).run(c.evento_id);
   }
-  db.prepare(`DELETE FROM convidados WHERE id=?`).run(c.id);
-  res.json({ ok: true });
+  db.prepare(`
+    UPDATE convidados SET status='cancelado', mesa_id=NULL, cadeira=NULL,
+      cancelado_em=datetime('now','localtime'), cancelado_por=?
+    WHERE id=?
+  `).run(descreverUsuario(req.session.usuario), c.id);
+  res.json({ ok: true, envio });
 });
 
 // Atribuir/limpar assento (mesa + cadeira)
@@ -714,7 +762,11 @@ router.post('/checkin', (req, res) => {
   if (!podeAcessarEvento(req.session.usuario, c.evento_id)) {
     return res.status(403).json({ erro: 'Este convite pertence a outro evento.' });
   }
-  if (c.status === 'cancelado') return res.status(400).json({ erro: `Convite CANCELADO — ${c.nome}.`, convidado: c });
+  if (c.status === 'cancelado') {
+    const quando = c.cancelado_em ? ` em ${c.cancelado_em}` : '';
+    const quem = c.cancelado_por ? ` (cancelado por ${c.cancelado_por})` : '';
+    return res.status(400).json({ erro: `Convite CANCELADO${quando} — ${c.nome}${quem}.`, convidado: c });
+  }
   if (c.status === 'checkin') {
     return res.json({ ok: true, repetido: true, mensagem: `${c.nome} já fez check-in em ${c.checkin_em}.`, convidado: c });
   }

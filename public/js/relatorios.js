@@ -22,6 +22,13 @@ function selo(status) {
   return `<span class="selo s-${esc(status)}">${NOMES_STATUS[status] || esc(status)}</span>`;
 }
 
+// Nota de auditoria sob o selo "Cancelado": quando e por quem — evidência para eventuais
+// contestações (ex.: convidado cancelado que ainda assim compareceu ao evento).
+function notaCancelamento(c) {
+  if (c.status !== 'cancelado' || !c.cancelado_em) return '';
+  return `<br><small style="color:var(--suave)">${dataHoraBr(c.cancelado_em)}${c.cancelado_por ? ' · ' + esc(c.cancelado_por) : ''}</small>`;
+}
+
 function assento(c) {
   if (c.mesa_numero != null && c.cadeira != null) return `Mesa ${c.mesa_numero} · Cad. ${c.cadeira}`;
   if (c.mesa_numero != null) return `Mesa ${c.mesa_numero}`;
@@ -111,7 +118,7 @@ function relGeral(lista) {
       <tbody>${ordenada.map((c, i) => `
         <tr><td class="num">${i + 1}</td><td><strong>${esc(c.nome)}</strong></td>
         <td>${esc(c.empresa_nome || 'Individual')}</td><td>${esc(c.cargo || '—')}</td>
-        <td>${contato(c)}</td>${mapaAtivo ? `<td>${assento(c)}</td>` : ''}<td>${selo(c.status)}</td></tr>`).join('')}
+        <td>${contato(c)}</td>${mapaAtivo ? `<td>${assento(c)}</td>` : ''}<td>${selo(c.status)}${notaCancelamento(c)}</td></tr>`).join('')}
       </tbody>
     </table>`;
 }
@@ -151,7 +158,7 @@ function relEmpresas(empresas, convidados) {
           <thead><tr><th>Nome</th><th>Contato</th>${mapaAtivo ? '<th>Mesa/Cadeira</th>' : ''}<th>Status</th></tr></thead>
           <tbody>${seus.map(c => `
             <tr><td><strong>${esc(c.nome)}</strong>${c.tipo === 'responsavel' ? ' <small>(responsável)</small>' : ''}</td>
-            <td>${contato(c)}</td>${mapaAtivo ? `<td>${assento(c)}</td>` : ''}<td>${selo(c.status)}</td></tr>`).join('')}
+            <td>${contato(c)}</td>${mapaAtivo ? `<td>${assento(c)}</td>` : ''}<td>${selo(c.status)}${notaCancelamento(c)}</td></tr>`).join('')}
           </tbody></table>` : '<p class="sub">Nenhum convidado inscrito.</p>'}
       </div>`;
   }
@@ -189,7 +196,7 @@ function relPresenca(lista) {
       <thead><tr><th>Nome</th><th>Empresa</th><th>Confirmou em</th><th>Check-in em</th><th>Situação</th></tr></thead>
       <tbody>${ordenada.map(c => `
         <tr><td><strong>${esc(c.nome)}</strong></td><td>${esc(c.empresa_nome || 'Individual')}</td>
-        <td>${esc(c.confirmado_em || '—')}</td><td>${esc(c.checkin_em || '—')}</td><td>${selo(c.status)}</td></tr>`).join('')}
+        <td>${esc(c.confirmado_em || '—')}</td><td>${esc(c.checkin_em || '—')}</td><td>${selo(c.status)}${notaCancelamento(c)}</td></tr>`).join('')}
       </tbody>
     </table>`;
 }

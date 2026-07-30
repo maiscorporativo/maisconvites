@@ -140,22 +140,27 @@ function desenharConvidados(convidados, evento) {
   const podeEditar = !evento.prazo_encerrado;
   const mapaAtivo = evento.mapa_mesas !== 0;
   t.innerHTML = `<tr><th>Nome</th><th>Tipo</th><th>Contato</th>${mapaAtivo ? '<th>Assento</th>' : ''}<th>Status</th><th>Convite</th></tr>` +
-    convidados.map(c => `
+    convidados.map(c => {
+      const cancelado = c.status === 'cancelado';
+      return `
       <tr>
         <td><strong>${esc(c.nome)}</strong>${c.cargo ? `<br><small style="color:var(--texto-suave)">${esc(c.cargo)}</small>` : ''}</td>
         <td>${seloTipo(c.tipo)}</td>
         <td><small>${esc(c.email || '')}${c.email && c.telefone ? '<br>' : ''}${esc(c.telefone || '')}</small></td>
         ${mapaAtivo ? `<td>${assentoTexto(c)}</td>` : ''}
-        <td>${seloStatus(c.status)}</td>
+        <td>${seloStatus(c.status)}${cancelado && c.cancelado_em ? `<br><small style="color:var(--texto-suave)">${dataHoraBr(c.cancelado_em)}</small>` : ''}</td>
         <td style="white-space:nowrap">
+          ${cancelado ? `
+          <a class="botao botao-mini botao-claro" title="Ver convite digital" href="/convite/${esc(c.token)}" target="_blank">🎫 Ver</a>` : `
           <button class="botao-mini botao-claro" title="Reenviar por e-mail" onclick="enviarConviteEmpresa(${c.id},'email')">✉️ Reenviar</button>
           <button class="botao-mini botao-claro" title="Reenviar por WhatsApp" onclick="enviarConviteEmpresa(${c.id},'whatsapp')">💬 Reenviar</button>
           <a class="botao botao-mini botao-claro" title="Ver convite digital" href="/convite/${esc(c.token)}" target="_blank">🎫 Ver</a>
           ${podeEditar && c.tipo !== 'responsavel' ? `
             <button class="botao-mini botao-claro" title="Editar" onclick="editarConvidadoEmpresa(${c.id})">✎</button>
-            <button class="botao-mini botao-perigo" title="Excluir" onclick="excluirConvidadoEmpresa(${c.id})">✕</button>` : ''}
+            <button class="botao-mini botao-perigo" title="Cancelar" onclick="excluirConvidadoEmpresa(${c.id})">✕</button>` : ''}`}
         </td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
 }
 
 window.enviarConviteEmpresa = async (id, canal) => {
@@ -198,15 +203,19 @@ window.editarConvidadoEmpresa = (id) => {
 
 window.excluirConvidadoEmpresa = (id) => {
   const c = painelDados.convidados.find(x => x.id === id);
+  const temContato = c.email || c.telefone;
   const m = abrirModal(`
-    <h3>Excluir convidado?</h3>
-    <p><strong>${esc(c.nome)}</strong> será removido e o convite volta a ficar disponível na sua cota.</p>
-    <div class="acoes"><button class="botao-claro" data-fechar>Cancelar</button>
-    <button class="botao-perigo" id="xx-conf">Excluir</button></div>`);
+    <h3>Cancelar convite?</h3>
+    <p><strong>${esc(c.nome)}</strong> será marcado como cancelado e o convite volta a ficar disponível na sua cota.
+    ${temContato ? ' Um aviso de cancelamento será enviado a ele automaticamente.' : ''}</p>
+    <div class="acoes"><button class="botao-claro" data-fechar>Voltar</button>
+    <button class="botao-perigo" id="xx-conf">Cancelar convite</button></div>`);
   m.querySelector('#xx-conf').onclick = async () => {
     try {
-      await api(`/api/empresa/convidados/${id}`, { method: 'DELETE' });
-      m.remove(); toast('Convidado excluído.', 'ok'); recarregar();
+      const r = await api(`/api/empresa/convidados/${id}`, { method: 'DELETE' });
+      m.remove(); toast('Convite cancelado.', 'ok');
+      if (r.envio) tratarEnvioAutomatico(r.envio);
+      recarregar();
     } catch (e) { toast(e.message, 'erro'); }
   };
 };

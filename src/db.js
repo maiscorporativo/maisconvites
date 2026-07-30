@@ -113,6 +113,10 @@ for (const sql of [
   `ALTER TABLE eventos ADD COLUMN timbrado TEXT DEFAULT ''`,
   `ALTER TABLE eventos ADD COLUMN mapa_mesas INTEGER DEFAULT 1`,
   `ALTER TABLE convidados ADD COLUMN codigo TEXT`,
+  `ALTER TABLE eventos ADD COLUMN whatsapp_mensagem TEXT DEFAULT ''`,
+  `ALTER TABLE eventos ADD COLUMN mensagem_cancelamento TEXT DEFAULT ''`,
+  `ALTER TABLE convidados ADD COLUMN cancelado_em TEXT`,
+  `ALTER TABLE convidados ADD COLUMN cancelado_por TEXT`,
 ]) {
   try { db.exec(sql); } catch { /* coluna já existe */ }
 }

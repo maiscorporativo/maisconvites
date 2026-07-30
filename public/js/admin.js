@@ -339,7 +339,7 @@ function preencherFormEvento() {
   const e = estado.evento;
   if (!e) return;
   const f = document.getElementById('form-evento');
-  for (const campo of ['nome', 'data_evento', 'hora_evento', 'local_nome', 'endereco', 'dress_code', 'deadline', 'descricao', 'email_titulo', 'email_texto', 'email_rodape']) {
+  for (const campo of ['nome', 'data_evento', 'hora_evento', 'local_nome', 'endereco', 'dress_code', 'deadline', 'descricao', 'email_titulo', 'email_texto', 'email_rodape', 'whatsapp_mensagem', 'mensagem_cancelamento']) {
     if (f.elements[campo]) f.elements[campo].value = e[campo] || '';
   }
   desenharBanner(e.banner);
@@ -365,6 +365,8 @@ document.getElementById('form-evento').addEventListener('submit', async ev => {
     hoteis: coletarLinhas('lista-hoteis'), facilities: coletarLinhas('lista-facilities'),
     email_titulo: f.elements.email_titulo.value, email_texto: f.elements.email_texto.value,
     email_rodape: f.elements.email_rodape.value,
+    whatsapp_mensagem: f.elements.whatsapp_mensagem.value,
+    mensagem_cancelamento: f.elements.mensagem_cancelamento.value,
   };
   try {
     await api(`/api/admin/eventos/${estado.eventoId}`, { method: 'PUT', body: corpo });
@@ -853,6 +855,46 @@ window.excluirEmpresa = (id) => {
   };
 };
 
+// ── Envio em massa das credenciais de acesso (convidados principais) ──
+let envioMassaEmpresasEmAndamento = false;
+document.getElementById('btn-enviar-massa-empresas').onclick = () => {
+  if (!estado.empresas.length) { toast('Nenhuma empresa cadastrada ainda.', 'erro'); return; }
+  const m = abrirModal(`
+    <h3>Enviar credenciais em massa?</h3>
+    <p>O sistema enviará (por e-mail e/ou WhatsApp, o que houver cadastrado) o login e a senha de
+    acesso para o responsável de cada uma das <strong>${estado.empresas.length}</strong> empresas
+    deste evento. Empresas sem responsável cadastrado ou sem contato serão ignoradas e listadas ao final.</p>
+    <div class="acoes"><button class="botao-claro" data-fechar>Cancelar</button>
+    <button class="botao-ouro" id="em-conf">Enviar para todas</button></div>`);
+  m.querySelector('#em-conf').onclick = async () => {
+    if (envioMassaEmpresasEmAndamento) return;
+    envioMassaEmpresasEmAndamento = true;
+    const btn = m.querySelector('#em-conf');
+    btn.disabled = true; btn.classList.add('carregando');
+    try {
+      const r = await api(`/api/admin/eventos/${estado.eventoId}/empresas/enviar-credenciais`, { method: 'POST' });
+      m.remove();
+      mostrarResultadoEnvioMassaEmpresas(r);
+      recarregar();
+    } catch (e) {
+      toast(e.message, 'erro');
+      btn.disabled = false; btn.classList.remove('carregando');
+    } finally {
+      envioMassaEmpresasEmAndamento = false;
+    }
+  };
+};
+
+function mostrarResultadoEnvioMassaEmpresas(r) {
+  abrirModal(`
+    <h3>Envio em massa concluído</h3>
+    <p><strong>${r.enviados.length}</strong> de <strong>${r.total}</strong> empresa(s) receberam as credenciais.</p>
+    ${r.sem_responsavel.length ? `<p>⚠️ <strong>${r.sem_responsavel.length}</strong> sem responsável cadastrado (edite a empresa e informe o nome): ${esc(r.sem_responsavel.join(', '))}.</p>` : ''}
+    ${r.sem_contato.length ? `<p>⚠️ <strong>${r.sem_contato.length}</strong> sem e-mail nem telefone cadastrado: ${esc(r.sem_contato.join(', '))}.</p>` : ''}
+    ${r.falhas.length ? `<p>❌ <strong>${r.falhas.length}</strong> falharam no envio: ${esc(r.falhas.map(f => `${f.empresa} (${f.erro})`).join('; '))}.</p>` : ''}
+    <div class="acoes"><button class="botao-ouro" data-fechar>Concluir</button></div>`);
+}
+
 // ═══════════ CONVIDADOS ═══════════
 
 document.getElementById('form-individual').addEventListener('submit', async ev => {
@@ -868,6 +910,12 @@ document.getElementById('form-individual').addEventListener('submit', async ev =
 });
 
 document.getElementById('filtro-convidados').addEventListener('input', desenharConvidados);
+document.getElementById('btn-filtro-cancelados').addEventListener('click', () => {
+  const campo = document.getElementById('filtro-convidados');
+  const ativo = campo.value.trim().toLowerCase() === 'cancelado';
+  campo.value = ativo ? '' : 'cancelado';
+  desenharConvidados();
+});
 
 function desenharConvidados() {
   const filtro = (document.getElementById('filtro-convidados').value || '').toLowerCase();
@@ -878,23 +926,28 @@ function desenharConvidados() {
   const mapaAtivo = estado.evento ? estado.evento.mapa_mesas !== 0 : true;
   t.innerHTML = `
     <tr><th>Nome</th><th>Empresa</th><th>Tipo</th><th>Contato</th>${mapaAtivo ? '<th>Assento</th>' : ''}<th>Status</th><th>Ações</th></tr>` +
-    lista.map(c => `
+    lista.map(c => {
+      const cancelado = c.status === 'cancelado';
+      return `
       <tr>
         <td><strong>${esc(c.nome)}</strong>${c.cargo ? `<br><small style="color:var(--texto-suave)">${esc(c.cargo)}</small>` : ''}</td>
         <td>${esc(c.empresa_nome || 'Individual')}</td>
         <td>${seloTipo(c.tipo)}</td>
         <td><small>${esc(c.email || '')}${c.email && c.telefone ? '<br>' : ''}${esc(c.telefone || '')}</small></td>
         ${mapaAtivo ? `<td>${assentoTexto(c)}</td>` : ''}
-        <td>${seloStatus(c.status)}</td>
+        <td>${seloStatus(c.status)}${cancelado && c.cancelado_em ? `<br><small style="color:var(--texto-suave)">${dataHoraBr(c.cancelado_em)}<br>${esc(c.cancelado_por || '')}</small>` : ''}</td>
         <td style="white-space:nowrap">
+          ${cancelado ? `
+          <a class="botao botao-mini botao-claro" title="Ver convite digital" href="/convite/${esc(c.token)}" target="_blank">🎫</a>` : `
           <button class="botao-mini botao-claro" title="Editar" onclick="editarConvidado(${c.id})">✎</button>
           ${mapaAtivo ? `<button class="botao-mini botao-claro" title="Definir assento" onclick="definirAssento(${c.id})">🪑</button>` : ''}
           <button class="botao-mini botao-claro" title="Enviar por e-mail" onclick="enviarConviteAdmin(${c.id},'email')">✉️</button>
           <button class="botao-mini botao-claro" title="Enviar por WhatsApp" onclick="enviarConviteAdmin(${c.id},'whatsapp')">💬</button>
           <a class="botao botao-mini botao-claro" title="Ver convite digital" href="/convite/${esc(c.token)}" target="_blank">🎫</a>
-          <button class="botao-mini botao-perigo" title="Excluir" onclick="excluirConvidado(${c.id})">✕</button>
+          <button class="botao-mini botao-perigo" title="Cancelar convite" onclick="excluirConvidado(${c.id})">✕</button>`}
         </td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
 }
 
 window.editarConvidado = (id) => {
@@ -966,14 +1019,21 @@ window.enviarConviteAdmin = async (id, canal) => {
 
 window.excluirConvidado = (id) => {
   const c = estado.convidados.find(x => x.id === id);
+  const temContato = c.email || c.telefone;
   const m = abrirModal(`
-    <h3>Excluir convidado?</h3>
-    <p><strong>${esc(c.nome)}</strong> será removido${c.tipo === 'individual' ? ' e o convite voltará ao pool individual' : ''}.</p>
-    <div class="acoes"><button class="botao-claro" data-fechar>Cancelar</button>
-    <button class="botao-perigo" id="xc-conf">Excluir</button></div>`);
+    <h3>Cancelar convite?</h3>
+    <p><strong>${esc(c.nome)}</strong> será marcado como cancelado${c.tipo === 'individual' ? ' e o convite voltará ao pool individual' : ''}.
+    O registro permanece no histórico (com data e responsável pelo cancelamento) e o credenciamento passa a
+    recusar esse convite automaticamente.${temContato ? ' Um aviso de cancelamento será enviado a ele.' : ''}</p>
+    <div class="acoes"><button class="botao-claro" data-fechar>Voltar</button>
+    <button class="botao-perigo" id="xc-conf">Cancelar convite</button></div>`);
   m.querySelector('#xc-conf').onclick = async () => {
-    try { await api(`/api/admin/convidados/${id}`, { method: 'DELETE' }); m.remove(); toast('Convidado excluído.', 'ok'); recarregar(); }
-    catch (e) { toast(e.message, 'erro'); }
+    try {
+      const r = await api(`/api/admin/convidados/${id}`, { method: 'DELETE' });
+      m.remove(); toast('Convite cancelado.', 'ok');
+      if (r.envio) tratarEnvioAutomatico(r.envio);
+      recarregar();
+    } catch (e) { toast(e.message, 'erro'); }
   };
 };
 
