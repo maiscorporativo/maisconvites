@@ -29,18 +29,20 @@ router.get('/banners/:arquivo', (req, res) => {
 // preview não executam o script da página, então essas tags precisam vir prontas aqui.
 router.get('/convite/:token', (req, res) => {
   const c = db.prepare(`SELECT evento_id FROM convidados WHERE token=?`).get(req.params.token);
-  const evento = c ? db.prepare(`SELECT nome, descricao, banner FROM eventos WHERE id=?`).get(c.evento_id) : null;
+  const evento = c ? db.prepare(`SELECT nome, descricao, banner, mostrar_logo_marca FROM eventos WHERE id=?`).get(c.evento_id) : null;
 
   const titulo = evento ? `Convite — ${evento.nome}` : 'Seu Convite';
   const descricao = evento?.descricao ? evento.descricao.slice(0, 200) : 'Você foi convidado(a) para este evento.';
-  const imagem = evento?.banner ? `${BASE_URL()}/banners/${evento.banner}` : `${BASE_URL()}/logo-branco.png`;
+  // Sem banner próprio, só cai na logo da Mais Corporativo se o evento não tiver pedido para escondê-la.
+  const imagem = evento?.banner ? `${BASE_URL()}/banners/${evento.banner}`
+    : (evento?.mostrar_logo_marca !== 0 ? `${BASE_URL()}/logo-branco.png` : null);
   const url = `${BASE_URL()}/convite/${req.params.token}`;
 
   const tags = `<title>${escAttr(titulo)}</title>
   <meta property="og:type" content="website">
   <meta property="og:title" content="${escAttr(titulo)}">
   <meta property="og:description" content="${escAttr(descricao)}">
-  <meta property="og:image" content="${escAttr(imagem)}">
+  ${imagem ? `<meta property="og:image" content="${escAttr(imagem)}">` : ''}
   <meta property="og:url" content="${escAttr(url)}">
   <meta name="twitter:card" content="summary_large_image">`;
 
@@ -82,7 +84,7 @@ router.get('/api/convite/:token', async (req, res) => {
       hoteis, facilities,
       banner_url: evento.banner ? '/banners/' + evento.banner : null,
       email_titulo: evento.email_titulo || '', email_texto: evento.email_texto || '',
-      email_rodape: evento.email_rodape || '',
+      email_rodape: evento.email_rodape || '', mostrar_logo_marca: evento.mostrar_logo_marca,
     },
     qr,
   });

@@ -14,7 +14,7 @@
     <div class="convite-cartao" id="cartao">
       <div id="area-banner"></div>
       <div class="convite-topo">
-        <img src="/logo-branco.png" alt="Mais Corporativo" style="height:38px;margin-bottom:16px">
+        <img src="/logo-branco.png" alt="Mais Corporativo" id="logo-topo-convite" style="height:38px;margin-bottom:16px">
         <div class="rotulo">Convite</div>
         <h1 id="nome-evento">Carregando…</h1>
       </div>
@@ -39,6 +39,7 @@
       const { convidado: c, evento: e, qr } = dados;
       document.title = `Convite — ${e.nome}`;
       document.getElementById('nome-evento').textContent = e.email_titulo || e.nome;
+      if (e.mostrar_logo_marca === 0) document.getElementById('logo-topo-convite').style.display = 'none';
       if (e.banner_url) {
         document.getElementById('area-banner').innerHTML =
           `<img src="${esc(e.banner_url)}" alt="" style="display:block;width:100%;height:auto">`;
@@ -96,9 +97,10 @@
 
         <p style="text-align:center;color:var(--texto-suave);font-size:12px;margin-top:28px">
           ${esc(e.email_rodape || 'Convite pessoal e intransferível · ' + e.nome)}</p>
+        ${e.mostrar_logo_marca !== 0 ? `
         <div style="text-align:center;margin-top:14px">
           <img src="/logo-azul.png" alt="Mais Corporativo" style="height:28px;opacity:.92">
-        </div>
+        </div>` : ''}
       `;
 
       desenharConfirmacao(c.status);

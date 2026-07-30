@@ -114,6 +114,7 @@ function textoConvite(evento, convidado, credenciais) {
 function htmlConvite(evento, convidado, credenciais, qrDataUrl, bannerDataUrl) {
   const assento = infoAssento(convidado, evento);
   const podeConfirmar = !['confirmado', 'checkin', 'cancelado'].includes(convidado.status);
+  const mostrarLogoMarca = evento.mostrar_logo_marca !== 0;
   let hoteis = [];
   try { hoteis = JSON.parse(evento.hoteis || '[]'); } catch {}
   let facilities = [];
@@ -129,7 +130,7 @@ function htmlConvite(evento, convidado, credenciais, qrDataUrl, bannerDataUrl) {
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
   ${bannerDataUrl ? `<tr><td><img src="${bannerDataUrl}" alt="" width="600" style="display:block;width:100%;height:auto;"></td></tr>` : ''}
   <tr><td style="background:#002042;padding:${bannerDataUrl ? '26px 32px' : '40px 32px'};text-align:center;">
-    ${LOGO_BRANCO ? `<img src="${LOGO_BRANCO}" alt="Mais Corporativo" height="36" style="height:36px;margin-bottom:14px;">` : ''}
+    ${mostrarLogoMarca && LOGO_BRANCO ? `<img src="${LOGO_BRANCO}" alt="Mais Corporativo" height="36" style="height:36px;margin-bottom:14px;">` : ''}
     <div style="color:#f7ad40;font-size:13px;letter-spacing:4px;text-transform:uppercase;">Convite</div>
     <div style="color:#eef4fb;font-size:30px;font-weight:700;margin-top:10px;">${titulo}</div>
   </td></tr>
@@ -165,7 +166,7 @@ function htmlConvite(evento, convidado, credenciais, qrDataUrl, bannerDataUrl) {
   </td></tr>
   <tr><td style="background:#f6f8fb;border-top:1px solid #d9e2ee;padding:18px;text-align:center;font-size:12px;color:#8ba0b8;">
     ${rodape}
-    ${LOGO_AZUL ? `<div style="margin-top:10px;"><img src="${LOGO_AZUL}" alt="Mais Corporativo" height="24" style="height:24px;"></div>` : ''}
+    ${mostrarLogoMarca && LOGO_AZUL ? `<div style="margin-top:10px;"><img src="${LOGO_AZUL}" alt="Mais Corporativo" height="24" style="height:24px;"></div>` : ''}
   </td></tr>
 </table>
 </td></tr></table>
@@ -192,12 +193,13 @@ function textoCancelamento(evento, convidado) {
 
 function htmlCancelamento(evento, convidado) {
   const texto = textoCancelamento(evento, convidado);
+  const mostrarLogoMarca = evento.mostrar_logo_marca !== 0;
   return `<!doctype html>
 <html lang="pt-BR"><body style="margin:0;padding:0;background:#f2f5f9;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#1c2733;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
   <tr><td style="background:#002042;padding:32px;text-align:center;">
-    ${LOGO_BRANCO ? `<img src="${LOGO_BRANCO}" alt="Mais Corporativo" height="32" style="height:32px;margin-bottom:12px;">` : ''}
+    ${mostrarLogoMarca && LOGO_BRANCO ? `<img src="${LOGO_BRANCO}" alt="Mais Corporativo" height="32" style="height:32px;margin-bottom:12px;">` : ''}
     <div style="color:#f7ad40;font-size:12px;letter-spacing:3px;text-transform:uppercase;">Aviso</div>
     <div style="color:#eef4fb;font-size:22px;font-weight:700;margin-top:8px;">Cancelamento de convite</div>
   </td></tr>

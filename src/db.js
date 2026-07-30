@@ -117,6 +117,7 @@ for (const sql of [
   `ALTER TABLE eventos ADD COLUMN mensagem_cancelamento TEXT DEFAULT ''`,
   `ALTER TABLE convidados ADD COLUMN cancelado_em TEXT`,
   `ALTER TABLE convidados ADD COLUMN cancelado_por TEXT`,
+  `ALTER TABLE eventos ADD COLUMN mostrar_logo_marca INTEGER DEFAULT 1`,
 ]) {
   try { db.exec(sql); } catch { /* coluna já existe */ }
 }
@@ -226,9 +227,7 @@ function seed() {
       'Jantar de confraternização FECOFAR 2026. Uma noite especial de networking e celebração com as indústrias parceiras.',
       'Traje esporte fino',
       '2026-08-31',
-      JSON.stringify([
-        { nome: 'Hotel (editar no painel)', endereco: 'Edite a lista de hotéis próximos no painel do evento', telefone: '', distancia: '' }
-      ]),
+      JSON.stringify([]), // hotéis: em branco — o admin cadastra os reais no painel (Evento → Hotéis próximos)
       JSON.stringify([
         { titulo: 'Estacionamento', descricao: 'Com manobrista no local' },
         { titulo: 'Recepção', descricao: 'Credenciamento a partir das 19h30 com QR code' }

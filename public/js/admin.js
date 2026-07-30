@@ -342,6 +342,7 @@ function preencherFormEvento() {
   for (const campo of ['nome', 'data_evento', 'hora_evento', 'local_nome', 'endereco', 'dress_code', 'deadline', 'descricao', 'email_titulo', 'email_texto', 'email_rodape', 'whatsapp_mensagem', 'mensagem_cancelamento']) {
     if (f.elements[campo]) f.elements[campo].value = e[campo] || '';
   }
+  f.elements.mostrar_logo_marca.checked = e.mostrar_logo_marca !== 0;
   desenharBanner(e.banner);
   desenharTimbrado(e.timbrado);
   const hoteis = JSON.parse(e.hoteis || '[]');
@@ -367,6 +368,7 @@ document.getElementById('form-evento').addEventListener('submit', async ev => {
     email_rodape: f.elements.email_rodape.value,
     whatsapp_mensagem: f.elements.whatsapp_mensagem.value,
     mensagem_cancelamento: f.elements.mensagem_cancelamento.value,
+    mostrar_logo_marca: f.elements.mostrar_logo_marca.checked,
   };
   try {
     await api(`/api/admin/eventos/${estado.eventoId}`, { method: 'PUT', body: corpo });

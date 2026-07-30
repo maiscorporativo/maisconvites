@@ -94,12 +94,14 @@ router.put('/eventos/:id', (req, res) => {
   db.prepare(`
     UPDATE eventos SET nome=?, data_evento=?, hora_evento=?, local_nome=?, endereco=?,
       descricao=?, dress_code=?, deadline=?, hoteis=?, facilities=?,
-      email_titulo=?, email_texto=?, email_rodape=?, whatsapp_mensagem=?, mensagem_cancelamento=? WHERE id=?
+      email_titulo=?, email_texto=?, email_rodape=?, whatsapp_mensagem=?, mensagem_cancelamento=?,
+      mostrar_logo_marca=? WHERE id=?
   `).run(b.nome, b.data_evento, b.hora_evento || '20:00', b.local_nome, b.endereco,
          b.descricao || '', b.dress_code || '', b.deadline,
          JSON.stringify(b.hoteis || []), JSON.stringify(b.facilities || []),
          b.email_titulo || '', b.email_texto || '', b.email_rodape || '',
-         b.whatsapp_mensagem || '', b.mensagem_cancelamento || '', e.id);
+         b.whatsapp_mensagem || '', b.mensagem_cancelamento || '',
+         b.mostrar_logo_marca === false ? 0 : 1, e.id);
   res.json({ ok: true });
 });
 
