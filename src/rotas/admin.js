@@ -444,6 +444,44 @@ router.delete('/empresas/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// Dispara o convite (login/senha incluídos) para o responsável de UMA empresa — usado
+// tanto pelo botão individual quanto, em loop, pelo envio em massa logo abaixo.
+async function enviarCredenciaisEmpresa(evento, emp) {
+  const resp = db.prepare(`
+    SELECT c.*, m.numero AS mesa_numero FROM convidados c
+    LEFT JOIN mesas m ON m.id = c.mesa_id
+    WHERE c.empresa_id=? AND c.tipo='responsavel'
+  `).get(emp.id);
+  if (!resp) return { situacao: 'sem_responsavel' };
+
+  // O contato usado no envio é o do convidado (responsável); mantém sincronizado
+  // com o cadastro da empresa, que é onde o admin costuma editá-lo.
+  if (resp.email !== (emp.email || '') || resp.telefone !== (emp.telefone || '')) {
+    db.prepare(`UPDATE convidados SET email=?, telefone=? WHERE id=?`).run(emp.email || '', emp.telefone || '', resp.id);
+    resp.email = emp.email || ''; resp.telefone = emp.telefone || '';
+  }
+  if (!resp.email && !resp.telefone) return { situacao: 'sem_contato' };
+
+  const credenciais = { username: emp.username, senha: emp.senha_provisoria || '(já alterada pelo usuário)' };
+  try {
+    const envio = await enviarConviteAutomatico(evento, resp, credenciais);
+    return { situacao: envio.algum_enviado ? 'enviado' : 'falha', envio, erro: envio.email?.erro || envio.whatsapp?.erro };
+  } catch (e) {
+    return { situacao: 'falha', erro: e.message };
+  }
+}
+
+// Envio individual das credenciais de acesso (botão "Enviar" na lista de convidados principais)
+router.post('/empresas/:id/enviar-credenciais', async (req, res) => {
+  const emp = linhaDoEscopo(req, res, `SELECT * FROM usuarios WHERE id=? AND role='convidado_principal'`, req.params.id, 'Convidado principal');
+  if (!emp) return;
+  const evento = db.prepare(`SELECT * FROM eventos WHERE id=?`).get(emp.evento_id);
+  const r = await enviarCredenciaisEmpresa(evento, emp);
+  if (r.situacao === 'sem_responsavel') return res.status(400).json({ erro: 'Esta empresa não tem responsável cadastrado. Edite e informe o nome.' });
+  if (r.situacao === 'sem_contato') return res.status(400).json({ erro: 'Esta empresa não tem e-mail nem telefone cadastrado.' });
+  res.json({ ok: true, envio: r.envio });
+});
+
 // Envio em massa das credenciais de acesso: dispara automaticamente (e-mail e/ou WhatsApp,
 // o que houver cadastrado) o convite do responsável de cada convidado principal do evento —
 // o mesmo texto que sai ao clicar "enviar" individualmente na lista de Convidados.
@@ -454,29 +492,11 @@ router.post('/eventos/:id/empresas/enviar-credenciais', async (req, res) => {
 
   const enviados = [], semContato = [], semResponsavel = [], falhas = [];
   for (const emp of empresas) {
-    const resp = db.prepare(`
-      SELECT c.*, m.numero AS mesa_numero FROM convidados c
-      LEFT JOIN mesas m ON m.id = c.mesa_id
-      WHERE c.empresa_id=? AND c.tipo='responsavel'
-    `).get(emp.id);
-    if (!resp) { semResponsavel.push(emp.empresa_nome); continue; }
-
-    // O contato usado no envio é o do convidado (responsável); mantém sincronizado
-    // com o cadastro da empresa, que é onde o admin costuma editá-lo.
-    if (resp.email !== (emp.email || '') || resp.telefone !== (emp.telefone || '')) {
-      db.prepare(`UPDATE convidados SET email=?, telefone=? WHERE id=?`).run(emp.email || '', emp.telefone || '', resp.id);
-      resp.email = emp.email || ''; resp.telefone = emp.telefone || '';
-    }
-    if (!resp.email && !resp.telefone) { semContato.push(emp.empresa_nome); continue; }
-
-    const credenciais = { username: emp.username, senha: emp.senha_provisoria || '(já alterada pelo usuário)' };
-    try {
-      const r = await enviarConviteAutomatico(evento, resp, credenciais);
-      if (r.algum_enviado) enviados.push(emp.empresa_nome);
-      else falhas.push({ empresa: emp.empresa_nome, erro: r.email?.erro || r.whatsapp?.erro || 'Falha no envio.' });
-    } catch (e) {
-      falhas.push({ empresa: emp.empresa_nome, erro: e.message });
-    }
+    const r = await enviarCredenciaisEmpresa(evento, emp);
+    if (r.situacao === 'sem_responsavel') semResponsavel.push(emp.empresa_nome);
+    else if (r.situacao === 'sem_contato') semContato.push(emp.empresa_nome);
+    else if (r.situacao === 'enviado') enviados.push(emp.empresa_nome);
+    else falhas.push({ empresa: emp.empresa_nome, erro: r.erro || 'Falha no envio.' });
   }
   res.json({ ok: true, total: empresas.length, enviados, sem_contato: semContato, sem_responsavel: semResponsavel, falhas });
 });

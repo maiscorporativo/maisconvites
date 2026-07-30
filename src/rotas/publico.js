@@ -1,10 +1,21 @@
 'use strict';
 const express = require('express');
 const path = require('node:path');
+const fs = require('node:fs');
 const { db, UPLOADS_DIR } = require('../db');
 const { qrDoConvite } = require('../envio');
 
 const router = express.Router();
+const BASE_URL = () => (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+
+// HTML-base do convite, lido uma vez; os dados de cada convite continuam vindo
+// do cliente via /api/convite/:token — só as tags de preview (Open Graph) abaixo
+// são montadas por evento antes de servir a página.
+const CONVITE_HTML_BASE = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'convite.html'), 'utf8');
+
+function escAttr(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 
 // Banner do convite (imagem enviada pelo organizador)
 router.get('/banners/:arquivo', (req, res) => {
@@ -13,9 +24,27 @@ router.get('/banners/:arquivo', (req, res) => {
   res.sendFile(caminho, err => { if (err && !res.headersSent) res.status(404).end(); });
 });
 
-// Página do convite digital
+// Página do convite digital — injeta título/descrição/imagem (Open Graph) do PRÓPRIO
+// evento para o preview de link no WhatsApp e redes sociais. Sem JS envolvido: robôs de
+// preview não executam o script da página, então essas tags precisam vir prontas aqui.
 router.get('/convite/:token', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', '..', 'public', 'convite.html'));
+  const c = db.prepare(`SELECT evento_id FROM convidados WHERE token=?`).get(req.params.token);
+  const evento = c ? db.prepare(`SELECT nome, descricao, banner FROM eventos WHERE id=?`).get(c.evento_id) : null;
+
+  const titulo = evento ? `Convite — ${evento.nome}` : 'Seu Convite';
+  const descricao = evento?.descricao ? evento.descricao.slice(0, 200) : 'Você foi convidado(a) para este evento.';
+  const imagem = evento?.banner ? `${BASE_URL()}/banners/${evento.banner}` : `${BASE_URL()}/logo-branco.png`;
+  const url = `${BASE_URL()}/convite/${req.params.token}`;
+
+  const tags = `<title>${escAttr(titulo)}</title>
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${escAttr(titulo)}">
+  <meta property="og:description" content="${escAttr(descricao)}">
+  <meta property="og:image" content="${escAttr(imagem)}">
+  <meta property="og:url" content="${escAttr(url)}">
+  <meta name="twitter:card" content="summary_large_image">`;
+
+  res.type('html').send(CONVITE_HTML_BASE.replace('<title>Seu Convite</title>', tags));
 });
 
 // Dados do convite digital (público, via token secreto)

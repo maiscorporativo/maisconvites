@@ -793,6 +793,7 @@ function desenharEmpresas() {
         <td>${e.cota}</td>
         <td>${e.usados}</td>
         <td style="white-space:nowrap">
+          <button class="botao-mini botao-claro" title="Enviar credenciais" onclick="enviarCredenciaisEmpresa(${e.id}, event)">✉️ Enviar</button>
           <button class="botao-mini botao-claro" onclick="editarEmpresa(${e.id})">Editar</button>
           <button class="botao-mini botao-claro" onclick="novaSenhaEmpresa(${e.id})">Nova senha</button>
           <button class="botao-mini botao-perigo" onclick="excluirEmpresa(${e.id})">Excluir</button>
@@ -853,6 +854,16 @@ window.excluirEmpresa = (id) => {
     try { await api(`/api/admin/empresas/${id}`, { method: 'DELETE' }); m.remove(); toast('Empresa excluída.', 'ok'); recarregar(); }
     catch (err) { toast(err.message, 'erro'); }
   };
+};
+
+window.enviarCredenciaisEmpresa = async (id, ev) => {
+  const btn = ev?.currentTarget;
+  if (btn) { btn.disabled = true; btn.classList.add('carregando'); }
+  try {
+    const r = await api(`/api/admin/empresas/${id}/enviar-credenciais`, { method: 'POST' });
+    tratarEnvioAutomatico(r.envio);
+  } catch (e) { toast(e.message, 'erro'); }
+  finally { if (btn) { btn.disabled = false; btn.classList.remove('carregando'); } }
 };
 
 // ── Envio em massa das credenciais de acesso (convidados principais) ──
