@@ -253,17 +253,35 @@ function desenharStats() {
   document.getElementById('stats').innerHTML = `
     <div class="stat destaque"><div class="valor">${s.inscritos}</div><div class="rotulo">Inscritos</div></div>
     <div class="stat"><div class="valor">${s.empresas}</div><div class="rotulo">Conv. principais</div></div>
-    <div class="stat"><div class="valor">${s.cota_total}</div><div class="rotulo">Cota total</div></div>
     <div class="stat"><div class="valor">${s.confirmados}</div><div class="rotulo">Confirmados</div></div>
     <div class="stat"><div class="valor">${s.checkins}</div><div class="rotulo">Check-ins</div></div>
-    <div class="stat"><div class="valor">${s.pool_individual}</div><div class="rotulo">Pool individual</div></div>
   `;
   document.getElementById('pool-disponivel').textContent = s.pool_individual;
 
   const area = document.getElementById('area-expiracao');
   if (s.expirado) {
     area.innerHTML = `<div class="aviso-caixa aviso-ok">✓ Expiração processada. Os convites não utilizados pelas empresas
-      foram recolhidos para o pool individual.</div>`;
+      foram recolhidos para o pool individual. Enquanto isso não for revertido, nenhuma empresa consegue inscrever
+      ou editar convidados — mesmo que o prazo tenha sido adiado depois.</div>
+      <button class="botao-claro" id="btn-reabrir">Reabrir inscrições</button>`;
+    document.getElementById('btn-reabrir').onclick = () => {
+      const m = abrirModal(`
+        <h3>Reabrir inscrições deste evento?</h3>
+        <p>As empresas voltam a poder inscrever e editar convidados. <strong>Atenção:</strong> as cotas que já
+        foram reduzidas no momento da expiração <strong>não são restauradas automaticamente</strong> — se alguma
+        empresa precisar de mais cota do que está mostrando agora, reajuste manualmente em "Editar" na lista de
+        convidados principais.</p>
+        <div class="acoes"><button class="botao-claro" data-fechar>Cancelar</button>
+        <button class="botao-ouro" id="btn-conf-reabrir">Reabrir mesmo assim</button></div>`);
+      m.querySelector('#btn-conf-reabrir').onclick = async () => {
+        try {
+          await api(`/api/admin/eventos/${estado.eventoId}/reabrir`, { method: 'POST' });
+          m.remove();
+          toast('Inscrições reabertas.', 'ok');
+          recarregar();
+        } catch (e) { toast(e.message, 'erro'); }
+      };
+    };
   } else {
     const hoje = new Date().toISOString().slice(0, 10);
     const vencido = hoje > s.deadline;

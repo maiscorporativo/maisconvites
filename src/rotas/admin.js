@@ -211,6 +211,17 @@ router.post('/eventos/:id/expirar', (req, res) => {
   res.json({ ok: true, recolhidos, detalhe, pool_individual: evento.pool_individual + recolhidos });
 });
 
+// Reabre as inscrições de um evento cuja expiração foi processada (ex.: processada por engano,
+// ou o prazo foi adiado depois). NÃO devolve às empresas as cotas recolhidas na expiração — isso
+// precisa ser reajustado manualmente (editar empresa) se for o caso, pois o valor original se perde.
+router.post('/eventos/:id/reabrir', (req, res) => {
+  const evento = eventoDoEscopo(req, res, req.params.id);
+  if (!evento) return;
+  if (!evento.expirado) return res.status(400).json({ erro: 'Este evento não está com a expiração processada.' });
+  db.prepare(`UPDATE eventos SET expirado=0 WHERE id=?`).run(evento.id);
+  res.json({ ok: true });
+});
+
 // Ajuste manual do pool de convites individuais (+n ou -n)
 router.post('/eventos/:id/pool', (req, res) => {
   const delta = Number(req.body?.delta || 0);
