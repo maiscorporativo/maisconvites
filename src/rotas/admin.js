@@ -495,23 +495,60 @@ router.post('/empresas/:id/enviar-credenciais', async (req, res) => {
   res.json({ ok: true, envio: r.envio });
 });
 
+// Roda `tarefa` sobre `itens` com no máximo `limite` execuções em paralelo — acelera o envio
+// em massa sem disparar tudo de uma vez (evita sobrecarregar SMTP/Evolution API).
+async function executarComLimite(itens, limite, tarefa) {
+  let indice = 0;
+  async function trabalhador() {
+    while (indice < itens.length) {
+      const i = indice++;
+      await tarefa(itens[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limite, itens.length) }, trabalhador));
+}
+
+// Progresso do envio em massa em andamento, por evento — em memória (não sobrevive a um
+// restart do servidor; é só um indicador de status consultado pelo painel via polling).
+const progressoEnvioMassa = new Map();
+
 // Envio em massa das credenciais de acesso: dispara automaticamente (e-mail e/ou WhatsApp,
 // o que houver cadastrado) o convite do responsável de cada convidado principal do evento —
 // o mesmo texto que sai ao clicar "enviar" individualmente na lista de Convidados.
-router.post('/eventos/:id/empresas/enviar-credenciais', async (req, res) => {
+// Roda em segundo plano (a resposta HTTP não fica esperando todo mundo terminar) para não
+// travar a tela nem estourar o timeout do proxy em eventos com muitas empresas; o painel
+// acompanha o andamento pela rota de status logo abaixo.
+router.post('/eventos/:id/empresas/enviar-credenciais', (req, res) => {
   const evento = eventoDoEscopo(req, res, req.params.id);
   if (!evento) return;
-  const empresas = db.prepare(`SELECT * FROM usuarios WHERE evento_id=? AND role='convidado_principal'`).all(evento.id);
-
-  const enviados = [], semContato = [], semResponsavel = [], falhas = [];
-  for (const emp of empresas) {
-    const r = await enviarCredenciaisEmpresa(evento, emp);
-    if (r.situacao === 'sem_responsavel') semResponsavel.push(emp.empresa_nome);
-    else if (r.situacao === 'sem_contato') semContato.push(emp.empresa_nome);
-    else if (r.situacao === 'enviado') enviados.push(emp.empresa_nome);
-    else falhas.push({ empresa: emp.empresa_nome, erro: r.erro || 'Falha no envio.' });
+  if (progressoEnvioMassa.get(evento.id)?.processando) {
+    return res.status(400).json({ erro: 'Já existe um envio em massa em andamento para este evento.' });
   }
-  res.json({ ok: true, total: empresas.length, enviados, sem_contato: semContato, sem_responsavel: semResponsavel, falhas });
+  const empresas = db.prepare(`SELECT * FROM usuarios WHERE evento_id=? AND role='convidado_principal'`).all(evento.id);
+  const progresso = {
+    processando: true, total: empresas.length, feitos: 0,
+    enviados: [], sem_contato: [], sem_responsavel: [], falhas: [],
+  };
+  progressoEnvioMassa.set(evento.id, progresso);
+
+  executarComLimite(empresas, 5, async (emp) => {
+    const r = await enviarCredenciaisEmpresa(evento, emp);
+    if (r.situacao === 'sem_responsavel') progresso.sem_responsavel.push(emp.empresa_nome);
+    else if (r.situacao === 'sem_contato') progresso.sem_contato.push(emp.empresa_nome);
+    else if (r.situacao === 'enviado') progresso.enviados.push(emp.empresa_nome);
+    else progresso.falhas.push({ empresa: emp.empresa_nome, erro: r.erro || 'Falha no envio.' });
+    progresso.feitos++;
+  }).finally(() => { progresso.processando = false; });
+
+  res.json({ ok: true, iniciado: true, total: empresas.length });
+});
+
+router.get('/eventos/:id/empresas/enviar-credenciais/status', (req, res) => {
+  const evento = eventoDoEscopo(req, res, req.params.id);
+  if (!evento) return;
+  const progresso = progressoEnvioMassa.get(evento.id);
+  if (!progresso) return res.status(404).json({ erro: 'Nenhum envio em massa foi iniciado para este evento.' });
+  res.json(progresso);
 });
 
 // Relatório em Excel (.xlsx): tipo = geral|credenciamento|empresas|presenca|mapa|etiquetas

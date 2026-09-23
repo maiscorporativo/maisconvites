@@ -903,10 +903,34 @@ document.getElementById('btn-enviar-massa-empresas').onclick = () => {
     const btn = m.querySelector('#em-conf');
     btn.disabled = true; btn.classList.add('carregando');
     try {
-      const r = await api(`/api/admin/eventos/${estado.eventoId}/empresas/enviar-credenciais`, { method: 'POST' });
-      m.remove();
-      mostrarResultadoEnvioMassaEmpresas(r);
-      recarregar();
+      // Só inicia o envio (roda em segundo plano no servidor); acompanhamos por polling
+      // abaixo — evita a tela travada esperando muitas empresas, uma por uma.
+      await api(`/api/admin/eventos/${estado.eventoId}/empresas/enviar-credenciais`, { method: 'POST' });
+      m.querySelector('.modal').innerHTML = `
+        <h3>Enviando credenciais…</h3>
+        <p id="em-progresso-texto">Iniciando…</p>
+        <div style="background:var(--borda);border-radius:999px;height:10px;overflow:hidden;margin-top:10px">
+          <div id="em-progresso-barra" style="background:var(--laranja-claro,#f7ad40);height:100%;width:0%;transition:width .2s"></div>
+        </div>`;
+      const poll = setInterval(async () => {
+        try {
+          const p = await api(`/api/admin/eventos/${estado.eventoId}/empresas/enviar-credenciais/status`);
+          const texto = m.querySelector('#em-progresso-texto');
+          const barra = m.querySelector('#em-progresso-barra');
+          if (texto) texto.textContent = `${p.feitos} de ${p.total} empresa(s) processadas…`;
+          if (barra) barra.style.width = `${p.total ? Math.round(p.feitos / p.total * 100) : 0}%`;
+          if (!p.processando) {
+            clearInterval(poll);
+            m.remove();
+            mostrarResultadoEnvioMassaEmpresas(p);
+            recarregar();
+          }
+        } catch (e) {
+          clearInterval(poll);
+          m.remove();
+          toast(e.message, 'erro');
+        }
+      }, 1200);
     } catch (e) {
       toast(e.message, 'erro');
       btn.disabled = false; btn.classList.remove('carregando');
