@@ -118,10 +118,47 @@ for (const sql of [
   `ALTER TABLE convidados ADD COLUMN cancelado_em TEXT`,
   `ALTER TABLE convidados ADD COLUMN cancelado_por TEXT`,
   `ALTER TABLE eventos ADD COLUMN mostrar_logo_marca INTEGER DEFAULT 1`,
+  `ALTER TABLE envios ADD COLUMN disparo_id INTEGER`,
 ]) {
   try { db.exec(sql); } catch { /* coluna já existe */ }
 }
 db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_convidados_codigo ON convidados(codigo)`);
+
+// ── Módulo de mensagens por e-mail (lembretes, avisos) ──
+// mensagens_modelo: mensagens criadas/editadas pelo organizador do evento.
+// mensagem_disparos: cada envio (em massa ou para convidados escolhidos) de uma mensagem;
+// os envios individuais ficam em `envios` com disparo_id apontando para cá.
+db.exec(`
+CREATE TABLE IF NOT EXISTS mensagens_modelo (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  evento_id INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  assunto TEXT NOT NULL,
+  corpo TEXT NOT NULL,
+  incluir_botoes INTEGER DEFAULT 1,   -- 1 = inclui botões "Confirmar presença" / "Abrir convite"
+  criado_em TEXT DEFAULT (datetime('now','localtime')),
+  atualizado_em TEXT DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE IF NOT EXISTS mensagem_disparos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  evento_id INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+  mensagem_id INTEGER REFERENCES mensagens_modelo(id) ON DELETE SET NULL,
+  mensagem_nome TEXT DEFAULT '',
+  assunto TEXT DEFAULT '',
+  total INTEGER DEFAULT 0,
+  enviados INTEGER DEFAULT 0,
+  falhas INTEGER DEFAULT 0,
+  sem_email INTEGER DEFAULT 0,
+  situacao TEXT DEFAULT 'andamento',  -- 'andamento' | 'concluido' | 'interrompido'
+  criado_por TEXT DEFAULT '',
+  iniciado_em TEXT DEFAULT (datetime('now','localtime')),
+  concluido_em TEXT
+);
+`);
+// Disparos que estavam em andamento quando o servidor caiu/reiniciou não continuam sozinhos
+db.exec(`UPDATE mensagem_disparos SET situacao='interrompido', concluido_em=datetime('now','localtime')
+         WHERE situacao='andamento'`);
 
 // ── Migração: roles antigos ('admin','empresa') → níveis novos ─
 // SQLite não altera CHECK via ALTER; recria a tabela preservando os dados.

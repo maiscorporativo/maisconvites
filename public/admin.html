@@ -28,6 +28,8 @@
         <svg class="icone" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>Mapa de mesas</button>
       <button data-secao="envio">
         <svg class="icone" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Envio</button>
+      <button data-secao="mensagens">
+        <svg class="icone" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22 6 12 13 2 6"/></svg>Mensagens</button>
       <button data-secao="credenciamento">
         <svg class="icone" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M21 14v7h-7"/><path d="M18 18h.01"/></svg>Credenciamento</button>
       <button data-secao="relatorios">
@@ -283,6 +285,84 @@ Atenciosamente,
       </div>
     </section>
 
+    <!-- ═══ MENSAGENS (lembretes e avisos por e-mail) ═══ -->
+    <section class="secao" id="secao-mensagens">
+      <div class="painel oculto" id="msg-progresso"></div>
+
+      <div class="painel" id="msg-painel-lista">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <h2 style="margin:0">Mensagens por e-mail</h2>
+          <button type="button" class="botao-ouro" id="btn-nova-mensagem">+ Nova mensagem</button>
+        </div>
+        <p>Crie mensagens personalizadas — lembrete da data do evento, pedido de confirmação de presença,
+           avisos de última hora — e envie para todos os convidados ou só para os que você escolher.
+           Cada convidado recebe um e-mail individual com o próprio nome e o botão para confirmar a presença.</p>
+        <div class="rolagem-x"><table class="tabela" id="tabela-mensagens"></table></div>
+      </div>
+
+      <div class="painel oculto" id="msg-painel-editor">
+        <h2 id="msg-editor-titulo">Nova mensagem</h2>
+        <div class="msg-editor">
+          <form id="form-mensagem" class="msg-editor-form">
+            <div id="msg-modelo-pronto-campo">
+              <label>Começar a partir de</label>
+              <select id="msg-modelo-pronto">
+                <option value="">Em branco</option>
+                <option value="confirmacao">Lembrete: confirme sua presença</option>
+                <option value="contagem">Faltam poucos dias para o evento</option>
+                <option value="vespera">Véspera do evento — informações finais</option>
+              </select>
+            </div>
+            <label>Nome interno (só você vê)</label>
+            <input name="nome" required maxlength="80" placeholder="Ex.: Lembrete 7 dias antes">
+            <label>Assunto do e-mail</label>
+            <div id="msg-assunto" class="campo-rico linha-unica" contenteditable="true" role="textbox"
+                 data-placeholder="Ex.: Lembrete importante sobre o nosso evento"></div>
+            <label>Mensagem</label>
+            <div class="barra-editor">
+              <button type="button" class="botao-mini botao-claro" id="btn-msg-negrito" title="Negrito: selecione um trecho e clique aqui"><strong>B</strong>&nbsp;Negrito</button>
+              <span class="barra-dica">Selecione um trecho do texto e clique em Negrito para destacá-lo.</span>
+            </div>
+            <div id="msg-corpo" class="campo-rico" contenteditable="true" role="textbox" aria-multiline="true"
+                 data-placeholder="Escreva aqui a sua mensagem…"></div>
+            <div class="msg-campos">
+              <p class="msg-campos-explica">
+                <strong>Personalize para cada convidado:</strong> clique no ponto do texto onde quer a informação
+                e depois num dos botões abaixo. Ela aparece como uma <span class="chip-campo">etiqueta</span> e,
+                no envio, é trocada automaticamente pelo dado de cada pessoa (ex.: a etiqueta
+                <span class="chip-campo">Nome do convidado</span> vira “Maria Silva”). Confira o resultado na
+                pré-visualização ao lado.
+              </p>
+              <div id="msg-campos-lista"></div>
+            </div>
+            <label class="msg-check">
+              <input type="checkbox" name="incluir_botoes" checked>
+              <span>Incluir no e-mail os botões <strong>“Confirmar minha presença”</strong> e <strong>“Abrir meu convite digital”</strong></span>
+            </label>
+            <div class="linha-flex" style="margin-top:18px">
+              <button type="submit" class="botao-ouro">Salvar</button>
+              <button type="button" class="botao-ouro" id="btn-msg-salvar-enviar">Salvar e escolher destinatários</button>
+              <button type="button" class="botao-claro" id="btn-msg-teste">Enviar teste para mim</button>
+              <button type="button" class="botao-claro" id="btn-msg-cancelar">Fechar</button>
+            </div>
+          </form>
+          <div class="msg-preview">
+            <div class="msg-preview-topo">
+              <strong>Pré-visualização</strong>
+              <select id="msg-preview-convidado" title="Ver como este convidado"></select>
+            </div>
+            <div class="msg-preview-assunto" id="msg-preview-assunto">—</div>
+            <iframe id="msg-preview-frame" title="Pré-visualização do e-mail" sandbox></iframe>
+          </div>
+        </div>
+      </div>
+
+      <div class="painel">
+        <h2>Histórico de envios</h2>
+        <div class="rolagem-x"><table class="tabela" id="tabela-disparos"></table></div>
+      </div>
+    </section>
+
     <!-- ═══ EMPRESAS ═══ -->
     <section class="secao" id="secao-empresas">
       <div class="painel">
@@ -445,13 +525,14 @@ Atenciosamente,
   <script src="/js/mapa.js"></script>
   <script src="/js/jsqr.min.js"></script>
   <script src="/js/admin.js"></script>
+  <script src="/js/mensagens-admin.js"></script>
   <script>
     // ── Aprimoramentos visuais do novo layout (aditivo — não altera o comportamento do admin.js) ──
     (function () {
       // Título da seção na topbar
       const TITULOS = {
         eventos: 'Eventos', visao: 'Visão geral', evento: 'Evento', empresas: 'Convidados principais',
-        convidados: 'Convidados', mapa: 'Mapa de mesas', envio: 'Envio',
+        convidados: 'Convidados', mapa: 'Mapa de mesas', envio: 'Envio', mensagens: 'Mensagens',
         credenciamento: 'Credenciamento', relatorios: 'Relatórios',
       };
       const abas = document.getElementById('abas');

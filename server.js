@@ -23,6 +23,7 @@ app.use(session({
 
 app.use('/api', require('./src/rotas/autenticacao'));
 app.use('/api/admin', require('./src/rotas/admin'));
+app.use('/api/admin', require('./src/rotas/mensagens'));
 app.use('/api/empresa', require('./src/rotas/empresa'));
 app.use('/', require('./src/rotas/publico'));
 

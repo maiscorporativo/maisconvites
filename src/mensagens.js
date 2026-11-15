@@ -213,7 +213,87 @@ function htmlCancelamento(evento, convidado) {
 </body></html>`;
 }
 
+// ── Mensagens personalizadas (módulo Mensagens: lembretes, avisos) ──
+
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Dias corridos de hoje (fuso local do servidor) até a data do evento; nunca negativo
+function diasAteEvento(evento) {
+  if (!evento.data_evento) return '';
+  const [a, m, d] = evento.data_evento.split('-').map(Number);
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const dias = Math.round((new Date(a, m - 1, d) - hoje) / 86400000);
+  return String(Math.max(0, dias));
+}
+
+// Campos disponíveis nas mensagens personalizadas: os do WhatsApp + alguns extras
+function valoresMensagem(evento, convidado) {
+  return {
+    ...valoresPlaceholder(evento, convidado),
+    link_confirmar: linkConfirmar(convidado.token),
+    dias_restantes: diasAteEvento(evento),
+    empresa: convidado.empresa_nome || '',
+    cargo: convidado.cargo || '',
+  };
+}
+
+function textoMensagem(modelo, evento, convidado) {
+  return {
+    assunto: substituirPlaceholders(modelo.assunto || '', valoresMensagem(evento, convidado)).replace(/\s+/g, ' ').trim(),
+    texto: substituirPlaceholders(modelo.corpo || '', valoresMensagem(evento, convidado)).trim(),
+  };
+}
+
+// Formatação simples do corpo: escapa HTML, **negrito**, links clicáveis, quebras de linha
+function formatarCorpo(texto) {
+  return escHtml(texto)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#e84e27;">$1</a>')
+    .replace(/\n/g, '<br>');
+}
+
+function htmlMensagem(modelo, evento, convidado, bannerDataUrl) {
+  const { assunto, texto } = textoMensagem(modelo, evento, convidado);
+  const mostrarLogoMarca = evento.mostrar_logo_marca !== 0;
+  const podeConfirmar = !['confirmado', 'checkin', 'cancelado'].includes(convidado.status);
+  const botoes = modelo.incluir_botoes === 0 || modelo.incluir_botoes === false ? '' : `
+    <div style="text-align:center;padding:24px 0 0;">
+      ${podeConfirmar ? `
+      <p style="margin:0;"><a href="${linkConfirmar(convidado.token)}" style="display:inline-block;background-color:#e84e27;color:#ffffff;text-decoration:none;padding:14px 34px;border-radius:8px;font-size:16px;font-weight:bold;">✅ Confirmar minha presença</a></p>
+      ` : `
+      <p style="margin:0;font-size:14px;color:#15803d;font-weight:bold;">✅ ${convidado.status === 'checkin' ? 'Presença já registrada no evento.' : 'Sua presença está confirmada. Até lá!'}</p>
+      `}
+      <p style="margin:14px 0 0;"><a href="${linkConvite(convidado.token)}" style="display:inline-block;background-color:#f7ad40;color:#002042;text-decoration:none;padding:10px 24px;border-radius:6px;font-size:13px;font-weight:600;">Abrir meu convite digital</a></p>
+    </div>`;
+
+  const html = `<!doctype html>
+<html lang="pt-BR"><body style="margin:0;padding:0;background:#f2f5f9;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#1c2733;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
+  ${bannerDataUrl ? `<tr><td><img src="${bannerDataUrl}" alt="" width="600" style="display:block;width:100%;height:auto;"></td></tr>` : ''}
+  <tr><td style="background:#002042;padding:${bannerDataUrl ? '22px 32px' : '32px'};text-align:center;">
+    ${mostrarLogoMarca && LOGO_BRANCO ? `<img src="${LOGO_BRANCO}" alt="Mais Corporativo" height="32" style="height:32px;margin-bottom:12px;">` : ''}
+    <div style="color:#eef4fb;font-size:22px;font-weight:700;">${escHtml(evento.email_titulo || evento.nome)}</div>
+    <div style="color:#f7ad40;font-size:13px;margin-top:8px;">📅 ${dataBr(evento.data_evento)} às ${escHtml(evento.hora_evento)} · 📍 ${escHtml(evento.local_nome)}</div>
+  </td></tr>
+  <tr><td style="padding:36px 40px;font-size:15px;line-height:1.7;">
+    ${formatarCorpo(texto)}
+    ${botoes}
+  </td></tr>
+  <tr><td style="background:#f6f8fb;border-top:1px solid #d9e2ee;padding:18px;text-align:center;font-size:12px;color:#8ba0b8;">
+    ${escHtml(evento.email_rodape || evento.nome)}
+    ${mostrarLogoMarca && LOGO_AZUL ? `<div style="margin-top:10px;"><img src="${LOGO_AZUL}" alt="Mais Corporativo" height="24" style="height:24px;"></div>` : ''}
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+  return { assunto, texto, html };
+}
+
 module.exports = {
   textoConvite, htmlConvite, linkConvite, linkConfirmar, dataBr,
   textoCancelamento, htmlCancelamento,
+  htmlMensagem,
 };

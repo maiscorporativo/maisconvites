@@ -23,6 +23,7 @@ document.getElementById('abas').addEventListener('click', e => {
   document.querySelectorAll('.secao').forEach(s => s.classList.toggle('ativa', s.id === 'secao-' + btn.dataset.secao));
   if (btn.dataset.secao === 'envio') carregarEnvio();
   else pararPollingWa();
+  if (btn.dataset.secao === 'mensagens' && window.carregarMensagens) window.carregarMensagens();
 });
 document.getElementById('btn-sair').addEventListener('click', sair);
 
@@ -195,6 +196,9 @@ async function recarregar() {
   desenharCheckins(checkins);
   desenharRelatorios();
   desenharEventosMaster();
+  if (window.carregarMensagens && document.getElementById('secao-mensagens').classList.contains('ativa')) {
+    window.carregarMensagens();
+  }
 }
 
 // ═══════════ RELATÓRIOS ═══════════
