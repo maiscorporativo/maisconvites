@@ -293,16 +293,43 @@ function htmlMensagem(modelo, evento, convidado, bannerDataUrl) {
 }
 
 // Mesma mensagem, no formato do WhatsApp: **negrito** → *negrito*; os "botões" viram links no fim
+// Estrutura igual à do convite por WhatsApp (textoConvite):
+//   título (o assunto) → texto do organizador → bloco com os dados do evento →
+//   final adaptado à situação do convidado (confirmar / já confirmado) + link do convite com QR.
+// Os dados do evento que o organizador já colocou no texto (ex.: a etiqueta "Data do evento")
+// não se repetem no bloco.
 function textoWhatsappMensagem(modelo, evento, convidado) {
-  let t = textoMensagem(modelo, evento, convidado).texto.replace(/\*\*([\s\S]+?)\*\*/g, '*$1*');
+  const { assunto, texto } = textoMensagem(modelo, evento, convidado);
+  const corpo = String(modelo.corpo || '');
+  const usa = campo => new RegExp(`\\{\\{\\s*${campo}\\s*\\}\\}`).test(corpo);
+  const assento = infoAssento(convidado, evento);
+
+  let msg = assunto ? `🔔 *${assunto}*\n\n` : '';
+  msg += texto.replace(/\*\*([\s\S]+?)\*\*/g, '*$1*').trim() + '\n';
+
+  const dados = [];
+  if (!usa('data') && !usa('hora')) dados.push(`📅 *Data:* ${dataBr(evento.data_evento)}${evento.hora_evento ? ` às ${evento.hora_evento}` : ''}`);
+  if (!usa('local') && !usa('endereco')) dados.push(`📍 *Local:* ${evento.local_nome}${evento.endereco ? ` — ${evento.endereco}` : ''}`);
+  if (evento.dress_code && !usa('traje')) dados.push(`👔 *Traje:* ${evento.dress_code}`);
+  if (assento && !usa('mesa')) dados.push(`🪑 *Seu lugar:* ${assento}`);
+  if (dados.length) msg += `\n${dados.join('\n')}\n`;
+
   if (modelo.incluir_botoes !== 0 && modelo.incluir_botoes !== false) {
-    t += '\n';
-    if (!['confirmado', 'checkin', 'cancelado'].includes(convidado.status)) {
-      t += `\n✅ *Confirme sua presença:*\n${linkConfirmar(convidado.token)}\n`;
+    if (convidado.status === 'checkin') {
+      msg += `\n✅ Sua presença já foi registrada no evento. Obrigado!\n`;
+    } else if (convidado.status === 'confirmado') {
+      msg += `\n✅ Sua presença está *confirmada*. Obrigado!\n`;
+    } else if (!usa('link_confirmar')) {
+      msg += `\n✅ *Confirme sua presença com um clique:*\n${linkConfirmar(convidado.token)}\n`;
     }
-    t += `\n🎫 *Seu convite digital:*\n${linkConvite(convidado.token)}`;
+    if (!usa('link')) {
+      msg += `\n🎫 *Seu convite digital com QR code:*\n${linkConvite(convidado.token)}\n`;
+      msg += `\nApresente o QR code na recepção para o credenciamento`;
+      msg += convidado.codigo ? ` (ou informe o código *${convidado.codigo}*).\n` : '.\n';
+    }
   }
-  return t.trim();
+  if (convidado.status !== 'checkin') msg += `\nAguardamos você!`;
+  return msg.trim();
 }
 
 module.exports = {

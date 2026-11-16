@@ -317,7 +317,7 @@ Atenciosamente,
             </div>
             <label>Nome interno (só você vê)</label>
             <input name="nome" required maxlength="80" placeholder="Ex.: Lembrete 7 dias antes">
-            <label>Assunto do e-mail <small style="font-weight:400;color:var(--texto-suave)">(no WhatsApp o assunto não aparece)</small></label>
+            <label>Assunto <small style="font-weight:400;color:var(--texto-suave)">(no e-mail é o assunto; no WhatsApp vira o título da mensagem)</small></label>
             <div id="msg-assunto" class="campo-rico linha-unica" contenteditable="true" role="textbox"
                  data-placeholder="Ex.: Lembrete importante sobre o nosso evento"></div>
             <label>Mensagem</label>
@@ -361,7 +361,7 @@ Atenciosamente,
               <iframe id="msg-preview-frame" title="Pré-visualização do e-mail" sandbox></iframe>
             </div>
             <div id="msg-preview-wa" class="msg-preview-wa oculto">
-              <p class="msg-preview-wa-nota">No WhatsApp o assunto não aparece e os botões viram links no fim da mensagem.</p>
+              <p class="msg-preview-wa-nota">No WhatsApp a mensagem segue o modelo do convite: título, seu texto, os dados do evento e o final de acordo com a situação de cada convidado.</p>
               <div class="msg-wa-balao" id="msg-preview-wa-balao"></div>
             </div>
           </div>
