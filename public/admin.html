@@ -288,15 +288,17 @@ Atenciosamente,
     <!-- ═══ MENSAGENS (lembretes e avisos por e-mail) ═══ -->
     <section class="secao" id="secao-mensagens">
       <div class="painel oculto" id="msg-progresso"></div>
+      <div class="painel oculto msg-progresso-wa" id="msg-progresso-wa"></div>
 
       <div class="painel" id="msg-painel-lista">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <h2 style="margin:0">Mensagens por e-mail</h2>
+          <h2 style="margin:0">Mensagens</h2>
           <button type="button" class="botao-ouro" id="btn-nova-mensagem">+ Nova mensagem</button>
         </div>
         <p>Crie mensagens personalizadas — lembrete da data do evento, pedido de confirmação de presença,
-           avisos de última hora — e envie para todos os convidados ou só para os que você escolher.
-           Cada convidado recebe um e-mail individual com o próprio nome e o botão para confirmar a presença.</p>
+           avisos de última hora — e envie <strong>por e-mail ou por WhatsApp</strong>, para todos os convidados ou só
+           para os que você escolher. Cada convidado recebe a mensagem individualmente, com o próprio nome e o link para
+           confirmar a presença.</p>
         <div class="rolagem-x"><table class="tabela" id="tabela-mensagens"></table></div>
       </div>
 
@@ -315,7 +317,7 @@ Atenciosamente,
             </div>
             <label>Nome interno (só você vê)</label>
             <input name="nome" required maxlength="80" placeholder="Ex.: Lembrete 7 dias antes">
-            <label>Assunto do e-mail</label>
+            <label>Assunto do e-mail <small style="font-weight:400;color:var(--texto-suave)">(no WhatsApp o assunto não aparece)</small></label>
             <div id="msg-assunto" class="campo-rico linha-unica" contenteditable="true" role="textbox"
                  data-placeholder="Ex.: Lembrete importante sobre o nosso evento"></div>
             <label>Mensagem</label>
@@ -348,11 +350,20 @@ Atenciosamente,
           </form>
           <div class="msg-preview">
             <div class="msg-preview-topo">
-              <strong>Pré-visualização</strong>
+              <div class="msg-preview-abas" id="msg-preview-abas">
+                <button type="button" class="ativa" data-aba="email">✉️ E-mail</button>
+                <button type="button" data-aba="whatsapp">💬 WhatsApp</button>
+              </div>
               <select id="msg-preview-convidado" title="Ver como este convidado"></select>
             </div>
-            <div class="msg-preview-assunto" id="msg-preview-assunto">—</div>
-            <iframe id="msg-preview-frame" title="Pré-visualização do e-mail" sandbox></iframe>
+            <div id="msg-preview-email">
+              <div class="msg-preview-assunto" id="msg-preview-assunto">—</div>
+              <iframe id="msg-preview-frame" title="Pré-visualização do e-mail" sandbox></iframe>
+            </div>
+            <div id="msg-preview-wa" class="msg-preview-wa oculto">
+              <p class="msg-preview-wa-nota">No WhatsApp o assunto não aparece e os botões viram links no fim da mensagem.</p>
+              <div class="msg-wa-balao" id="msg-preview-wa-balao"></div>
+            </div>
           </div>
         </div>
       </div>

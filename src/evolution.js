@@ -70,12 +70,18 @@ async function removerInstancia(nome) {
   try { await chamar('DELETE', `/instance/delete/${encodeURIComponent(nome)}`); } catch {}
 }
 
-// Envia texto; body v2 {number, text}, com fallback ao formato v1
-async function enviarTexto(nome, numero, texto) {
+// Envia texto; body v2 {number, text}, com fallback ao formato v1.
+// opcoes.delay (ms): a Evolution mostra "digitando…" por esse tempo antes de entregar —
+// deixa o envio com cara de humano (usado nos disparos segmentados de mensagens).
+async function enviarTexto(nome, numero, texto, opcoes = {}) {
   const caminho = `/message/sendText/${encodeURIComponent(nome)}`;
-  let { resp, dados } = await chamar('POST', caminho, { number: numero, text: texto });
+  const delay = Number(opcoes.delay) || 0;
+  let { resp, dados } = await chamar('POST', caminho, { number: numero, text: texto, ...(delay ? { delay } : {}) });
   if (resp.status === 400) {
-    ({ resp, dados } = await chamar('POST', caminho, { number: numero, textMessage: { text: texto } }));
+    ({ resp, dados } = await chamar('POST', caminho, {
+      number: numero, textMessage: { text: texto },
+      ...(delay ? { options: { delay, presence: 'composing' } } : {}),
+    }));
   }
   if (!resp.ok) throw new Error(extrairErro(dados));
   return dados;

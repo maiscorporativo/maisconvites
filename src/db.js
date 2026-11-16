@@ -156,9 +156,36 @@ CREATE TABLE IF NOT EXISTS mensagem_disparos (
   concluido_em TEXT
 );
 `);
-// Disparos que estavam em andamento quando o servidor caiu/reiniciou não continuam sozinhos
+for (const sql of [
+  `ALTER TABLE mensagem_disparos ADD COLUMN canal TEXT DEFAULT 'email'`,     // 'email' | 'whatsapp'
+  `ALTER TABLE mensagem_disparos ADD COLUMN config TEXT DEFAULT ''`,         // JSON da segmentação (WhatsApp)
+  `ALTER TABLE mensagem_disparos ADD COLUMN proximo_envio_ts INTEGER`,       // epoch ms da próxima mensagem (WhatsApp)
+  `ALTER TABLE mensagem_disparos ADD COLUMN motivo TEXT DEFAULT ''`,         // por que está aguardando/pausado
+]) {
+  try { db.exec(sql); } catch { /* coluna já existe */ }
+}
+
+// Fila persistente do WhatsApp: os disparos segmentados duram horas/dias e precisam
+// sobreviver a reinícios do servidor. O texto já vai renderizado (snapshot da mensagem).
+db.exec(`
+CREATE TABLE IF NOT EXISTS whatsapp_fila (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  disparo_id INTEGER NOT NULL REFERENCES mensagem_disparos(id) ON DELETE CASCADE,
+  convidado_id INTEGER REFERENCES convidados(id) ON DELETE SET NULL,
+  nome TEXT DEFAULT '',
+  numero TEXT NOT NULL,
+  texto TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pendente',  -- 'pendente' | 'enviado' | 'erro' | 'cancelado'
+  erro TEXT DEFAULT '',
+  enviado_em TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_fila_disparo ON whatsapp_fila(disparo_id, status);
+`);
+
+// Disparos de e-mail em andamento quando o servidor caiu/reiniciou não continuam sozinhos
+// (os de WhatsApp continuam: a fila está no banco e o agendador retoma de onde parou)
 db.exec(`UPDATE mensagem_disparos SET situacao='interrompido', concluido_em=datetime('now','localtime')
-         WHERE situacao='andamento'`);
+         WHERE situacao='andamento' AND COALESCE(canal,'email')='email'`);
 
 // ── Migração: roles antigos ('admin','empresa') → níveis novos ─
 // SQLite não altera CHECK via ALTER; recria a tabela preservando os dados.

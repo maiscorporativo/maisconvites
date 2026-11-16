@@ -839,3 +839,40 @@ body.pagina-convite {
   .msg-preview { position: static; }
   #msg-preview-frame { height: 520px; }
 }
+
+/* ── Mensagens: WhatsApp (canal, ritmo de envio, acompanhamento, pré-visualização) ── */
+.msg-canais { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; font-size: var(--texto-14); font-weight: 600; }
+.msg-wa { margin-top: 12px; padding: 14px 16px; border: 1px solid var(--borda); border-radius: var(--raio); background: var(--neutro-50); }
+.msg-wa h4 { margin: 10px 0 4px; font-size: var(--texto-14); }
+.msg-wa h4 small { font-weight: 400; color: var(--texto-suave); }
+.msg-wa .aviso-caixa { margin: 0 0 8px; }
+.msg-wa-explica { margin: 0 0 10px; font-size: var(--texto-13); color: var(--texto-suave); line-height: 1.55; }
+.msg-ritmos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.msg-ritmo { display: flex; gap: 8px; align-items: flex-start; padding: 10px; border: 1px solid var(--borda); border-radius: 10px; background: var(--painel); cursor: pointer; }
+.msg-ritmo.ativo { border-color: var(--laranja-claro); box-shadow: 0 0 0 2px var(--laranja-tinta-35); }
+.msg-ritmo input { width: auto; flex: none; margin-top: 3px; }
+.msg-ritmo span { display: flex; flex-direction: column; gap: 2px; font-size: var(--texto-13); }
+.msg-ritmo small { color: var(--texto-suave); line-height: 1.4; }
+.msg-regras { margin-top: 10px; border: 1px solid var(--borda); border-radius: 10px; background: var(--painel); }
+.msg-regra { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--borda); font-size: var(--texto-13); flex-wrap: wrap; }
+.msg-regra:last-child { border-bottom: none; }
+.msg-regra > span:first-child { color: var(--texto-suave); }
+.msg-regra-campo { width: 64px !important; height: 30px; padding: 0 6px; display: inline-block; text-align: center; font-size: var(--texto-13); }
+.msg-regra-campo.hora { width: 96px !important; }
+.msg-estimativa { margin: 10px 0 0; font-size: var(--texto-13); color: var(--texto); }
+.msg-progresso-wa { border-left: 4px solid #25d366; }
+.msg-wa-status { margin: 8px 0 0; font-size: var(--texto-14); color: var(--texto); }
+.msg-wa-status.pausado { color: var(--aviso); }
+.msg-wa-numeros { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: var(--texto-13); color: var(--texto-suave); }
+.msg-preview-abas { display: inline-flex; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; flex: none; }
+.msg-preview-abas button { height: 32px; padding: 0 12px; border: 0; background: var(--painel); font-size: var(--texto-13); color: var(--texto-suave); cursor: pointer; font-family: inherit; }
+.msg-preview-abas button + button { border-left: 1px solid var(--borda); }
+.msg-preview-abas button.ativa { background: var(--laranja-tinta-10); color: var(--texto); font-weight: 600; }
+.msg-preview-wa { padding: 14px; min-height: 420px; background: #e9dfd4; }
+.msg-preview-wa-nota { margin: 0 0 10px; font-size: 12px; color: #54656f; text-align: center; }
+.msg-wa-balao {
+  max-width: 88%; margin-left: auto; padding: 8px 10px 10px; border-radius: 8px 0 8px 8px; background: #d9fdd3;
+  color: #111b21; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; box-shadow: 0 1px 1px rgba(0,0,0,.12);
+}
+.msg-wa-balao a { color: #027eb5; text-decoration: underline; }
+@media (max-width: 640px) { .msg-ritmos { grid-template-columns: 1fr; } }

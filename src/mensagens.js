@@ -292,8 +292,21 @@ function htmlMensagem(modelo, evento, convidado, bannerDataUrl) {
   return { assunto, texto, html };
 }
 
+// Mesma mensagem, no formato do WhatsApp: **negrito** → *negrito*; os "botões" viram links no fim
+function textoWhatsappMensagem(modelo, evento, convidado) {
+  let t = textoMensagem(modelo, evento, convidado).texto.replace(/\*\*([\s\S]+?)\*\*/g, '*$1*');
+  if (modelo.incluir_botoes !== 0 && modelo.incluir_botoes !== false) {
+    t += '\n';
+    if (!['confirmado', 'checkin', 'cancelado'].includes(convidado.status)) {
+      t += `\n✅ *Confirme sua presença:*\n${linkConfirmar(convidado.token)}\n`;
+    }
+    t += `\n🎫 *Seu convite digital:*\n${linkConvite(convidado.token)}`;
+  }
+  return t.trim();
+}
+
 module.exports = {
   textoConvite, htmlConvite, linkConvite, linkConfirmar, dataBr,
   textoCancelamento, htmlCancelamento,
-  htmlMensagem,
+  htmlMensagem, textoWhatsappMensagem,
 };

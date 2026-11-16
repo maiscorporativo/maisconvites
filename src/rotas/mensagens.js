@@ -7,8 +7,12 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 const { db } = require('../db');
 const { exigirAdminEvento, podeAcessarEvento, descreverUsuario } = require('../auth');
-const { carregarConfigEnvio, bannerDataUrl } = require('../envio');
-const { htmlMensagem, linkConvite, linkConfirmar } = require('../mensagens');
+const { carregarConfigEnvio, bannerDataUrl, soDigitos } = require('../envio');
+const { htmlMensagem, textoWhatsappMensagem, linkConvite, linkConfirmar } = require('../mensagens');
+const evolution = require('../evolution');
+const wa = require('../whatsapp-agendador');
+
+wa.iniciarAgendador();
 
 const router = express.Router();
 router.use(exigirAdminEvento);
@@ -142,7 +146,10 @@ router.post('/eventos/:id/mensagens/preview', (req, res) => {
   if (!convidado) convidado = convidadoExemplo();
   const modelo = { assunto: b.assunto || '', corpo: b.corpo || '', incluir_botoes: b.incluir_botoes === false ? 0 : 1 };
   const r = htmlMensagem(modelo, e, convidado, bannerDataUrl(e));
-  res.json({ assunto: r.assunto, html: r.html, convidado: { id: convidado.id, nome: convidado.nome } });
+  res.json({
+    assunto: r.assunto, html: r.html, texto_whatsapp: textoWhatsappMensagem(modelo, e, convidado),
+    convidado: { id: convidado.id, nome: convidado.nome },
+  });
 });
 
 // Envia a mensagem para o próprio organizador (Reply-To / conta SMTP) para conferir na caixa de entrada
@@ -182,6 +189,7 @@ router.post('/mensagens/:mid/disparar', (req, res) => {
   const modelo = mensagemDoEscopo(req, res, req.params.mid);
   if (!modelo) return;
   const evento = db.prepare(`SELECT * FROM eventos WHERE id=?`).get(modelo.evento_id);
+  if (req.body?.canal === 'whatsapp') return dispararWhatsapp(req, res, evento, modelo);
   if (disparos.get(evento.id)?.processando) {
     return res.status(400).json({ erro: 'Já existe um envio de mensagens em andamento neste evento. Aguarde terminar.' });
   }
@@ -224,6 +232,43 @@ router.post('/mensagens/:mid/disparar', (req, res) => {
 
   res.json({ ok: true, iniciado: true, total: comEmail.length, sem_email: semEmail.length, intervalo_ms: INTERVALO_MS });
 });
+
+// ── WhatsApp: cria o disparo segmentado; quem envia é o agendador (src/whatsapp-agendador.js) ──
+function dispararWhatsapp(req, res, evento, modelo) {
+  if (!evolution.evolutionGlobalConfigurada()) {
+    return res.status(400).json({ erro: 'O servidor de WhatsApp (Evolution API) não está configurado no sistema.' });
+  }
+  const ativo = wa.disparoWhatsappAtivo(evento.id);
+  if (ativo) {
+    return res.status(400).json({ erro: `Já existe um envio por WhatsApp em andamento neste evento (“${ativo.mensagem_nome}”). ` +
+      'Para proteger o número, só um envio por WhatsApp acontece por vez — aguarde terminar ou cancele-o.' });
+  }
+  const config = wa.normalizarConfig(req.body?.segmentacao || {});
+  if (config.erro) return res.status(400).json({ erro: config.erro });
+
+  const ids = [...new Set((req.body?.convidado_ids || []).map(Number).filter(Boolean))];
+  if (!ids.length) return res.status(400).json({ erro: 'Selecione ao menos um convidado.' });
+  const buscar = db.prepare(`${SQL_CONVIDADO} WHERE c.id=? AND c.evento_id=? AND c.status!='cancelado'`);
+  const convidados = ids.map(id => buscar.get(id, evento.id)).filter(Boolean);
+  if (!convidados.length) return res.status(400).json({ erro: 'Nenhum dos convidados selecionados pertence a este evento.' });
+
+  // Número válido (55 + DDD + 8/9 dígitos) e um envio por número — mandar o mesmo texto
+  // duas vezes para o mesmo celular é justamente o tipo de coisa que gera denúncia/bloqueio
+  const itens = []; const vistos = new Set(); let semTelefone = 0; let duplicados = 0;
+  for (const c of convidados) {
+    const numero = soDigitos(c.telefone);
+    if (numero.length < 12 || numero.length > 13) { semTelefone++; continue; }
+    if (vistos.has(numero)) { duplicados++; continue; }
+    vistos.add(numero);
+    itens.push({ convidado: c, numero, texto: textoWhatsappMensagem(modelo, evento, c) });
+  }
+  if (!itens.length) return res.status(400).json({ erro: 'Nenhum dos convidados selecionados tem WhatsApp/telefone válido cadastrado.' });
+
+  const disparoId = wa.criarDisparo({
+    evento, modelo, itens, config, semTelefone, criadoPor: descreverUsuario(req.session.usuario),
+  });
+  res.json({ ok: true, iniciado: true, canal: 'whatsapp', disparo_id: disparoId, total: itens.length, sem_telefone: semTelefone, duplicados });
+}
 
 async function executarDisparo(evento, modelo, convidados, smtp, progresso) {
   const transporte = criarTransporte(smtp, true);
@@ -280,6 +325,48 @@ router.post('/eventos/:id/mensagens/disparo/interromper', (req, res) => {
   res.json({ ok: true });
 });
 
+// Estado do WhatsApp para o painel: conexão, envio ativo e ritmos predefinidos
+router.get('/eventos/:id/mensagens/whatsapp', async (req, res) => {
+  const e = eventoDoEscopo(req, res, req.params.id);
+  if (!e) return;
+  // ?leve=1 (acompanhamento a cada poucos segundos): pula a consulta de conexão à Evolution
+  let conectado = null;
+  if (!req.query.leve && evolution.evolutionGlobalConfigurada()) {
+    conectado = false;
+    for (const nome of carregarConfigEnvio(e.id).instancias) {
+      if (await evolution.estadoInstancia(nome) === 'open') { conectado = true; break; }
+    }
+  }
+  const ativo = wa.disparoWhatsappAtivo(e.id);
+  res.json({
+    disponivel: evolution.evolutionGlobalConfigurada(), conectado,
+    ativo: ativo ? wa.resumo(ativo) : null, presets: wa.PRESETS,
+  });
+});
+
+function disparoWhatsappDoEscopo(req, res) {
+  const d = db.prepare(`SELECT * FROM mensagem_disparos WHERE id=? AND canal='whatsapp'`).get(req.params.did);
+  if (!d) { res.status(404).json({ erro: 'Envio não encontrado.' }); return null; }
+  if (!podeAcessarEvento(req.session.usuario, d.evento_id)) { res.status(403).json({ erro: 'Você não tem acesso a este evento.' }); return null; }
+  return d;
+}
+
+router.post('/disparos/:did/pausar', (req, res) => {
+  const d = disparoWhatsappDoEscopo(req, res); if (!d) return;
+  if (d.situacao !== 'andamento') return res.status(400).json({ erro: 'Este envio não está em andamento.' });
+  wa.pausar(d); res.json({ ok: true });
+});
+router.post('/disparos/:did/retomar', (req, res) => {
+  const d = disparoWhatsappDoEscopo(req, res); if (!d) return;
+  if (d.situacao !== 'pausado') return res.status(400).json({ erro: 'Este envio não está pausado.' });
+  wa.retomar(d); res.json({ ok: true });
+});
+router.post('/disparos/:did/cancelar', (req, res) => {
+  const d = disparoWhatsappDoEscopo(req, res); if (!d) return;
+  if (!['andamento', 'pausado'].includes(d.situacao)) return res.status(400).json({ erro: 'Este envio já terminou.' });
+  wa.cancelar(d); res.json({ ok: true });
+});
+
 // ═══════════════ Histórico ═══════════════
 
 router.get('/eventos/:id/mensagens/disparos', (req, res) => {
@@ -292,6 +379,12 @@ router.get('/disparos/:did', (req, res) => {
   const d = db.prepare(`SELECT * FROM mensagem_disparos WHERE id=?`).get(req.params.did);
   if (!d) return res.status(404).json({ erro: 'Disparo não encontrado.' });
   if (!podeAcessarEvento(req.session.usuario, d.evento_id)) return res.status(403).json({ erro: 'Você não tem acesso a este evento.' });
+  if (d.canal === 'whatsapp') {
+    const destinatarios = db.prepare(`
+      SELECT numero AS destino, status, erro, enviado_em AS criado_em, nome FROM whatsapp_fila
+      WHERE disparo_id=? ORDER BY id`).all(d.id);
+    return res.json({ ...d, destinatarios });
+  }
   const destinatarios = db.prepare(`
     SELECT en.destino, en.status, en.criado_em, c.nome, c.status AS status_convidado
     FROM envios en JOIN convidados c ON c.id = en.convidado_id

@@ -315,5 +315,5 @@ async function enviarCancelamentoAutomatico(evento, convidado) {
 
 module.exports = {
   enviarConvite, enviarConviteAutomatico, enviarCancelamentoAutomatico,
-  carregarConfigEnvio, qrDoConvite, bannerDataUrl,
+  carregarConfigEnvio, qrDoConvite, bannerDataUrl, soDigitos,
 };
