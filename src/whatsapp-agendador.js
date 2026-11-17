@@ -12,6 +12,30 @@
 const { db } = require('./db');
 const evolution = require('./evolution');
 const { carregarConfigEnvio } = require('./envio');
+const { textoWhatsappMensagem } = require('./mensagens');
+
+// Convidado com os mesmos campos usados na montagem da mensagem (empresa, mesa…)
+const SQL_CONVIDADO_ATUAL = `
+  SELECT c.*, u.empresa_nome, m.numero AS mesa_numero FROM convidados c
+  LEFT JOIN usuarios u ON u.id = c.empresa_id
+  LEFT JOIN mesas m ON m.id = c.mesa_id
+  WHERE c.id=?`;
+
+// O disparo pode levar dias: o texto é remontado NA HORA DO ENVIO com os dados atuais
+// ("faltam N dias", status de confirmação, mesa, data/local do evento). Usa a cópia do
+// modelo guardada no disparo — editar a mensagem depois não altera um envio já iniciado.
+// Se não der para remontar (convidado apagado etc.), usa o texto gravado na criação.
+function textoAtual(d, item, cfg) {
+  try {
+    if (!cfg.modelo || !item.convidado_id) return item.texto;
+    const evento = db.prepare(`SELECT * FROM eventos WHERE id=?`).get(d.evento_id);
+    const convidado = db.prepare(SQL_CONVIDADO_ATUAL).get(item.convidado_id);
+    if (!evento || !convidado) return item.texto;
+    return textoWhatsappMensagem(cfg.modelo, evento, convidado) || item.texto;
+  } catch {
+    return item.texto;
+  }
+}
 
 const PRESETS = {
   cauteloso: { intervalo_min: 30, intervalo_max: 60, lote: 15, pausa_lote_min: 15, pausa_lote_max: 25, limite_diario: 100, hora_inicio: '08:00', hora_fim: '20:00' },
@@ -123,7 +147,8 @@ function disparoWhatsappAtivo(eventoId) {
 }
 
 /**
- * Cria o disparo e enfileira as mensagens (texto já personalizado por convidado).
+ * Cria o disparo e enfileira as mensagens. O texto gravado aqui é uma prévia/reserva:
+ * na hora do envio ele é remontado com os dados do dia (ver textoAtual).
  * @param itens [{convidado, numero, texto}] — já deduplicados por número
  */
 function criarDisparo({ evento, modelo, itens, config, criadoPor, semTelefone }) {
@@ -134,7 +159,8 @@ function criarDisparo({ evento, modelo, itens, config, criadoPor, semTelefone })
                                      canal, config, proximo_envio_ts, situacao)
       VALUES (?,?,?,?,?,?,?, 'whatsapp', ?, ?, 'andamento')`).run(
       evento.id, modelo.id, modelo.nome, modelo.assunto, itens.length, semTelefone, criadoPor,
-      JSON.stringify(config), Date.now());
+      JSON.stringify({ ...config, modelo: { assunto: modelo.assunto, corpo: modelo.corpo, incluir_botoes: modelo.incluir_botoes } }),
+      Date.now());
     const disparoId = Number(r.lastInsertRowid);
     const ins = db.prepare(`INSERT INTO whatsapp_fila (disparo_id, convidado_id, nome, numero, texto) VALUES (?,?,?,?,?)`);
     for (const it of itens) ins.run(disparoId, it.convidado.id, it.convidado.nome, it.numero, it.texto);
@@ -229,8 +255,10 @@ async function processarDisparo(d) {
 
   // 5) Envia (com "digitando…" de 2 a 5 s)
   let ok = false;
+  const texto = textoAtual(d, item, cfg);
+  if (texto !== item.texto) db.prepare(`UPDATE whatsapp_fila SET texto=? WHERE id=?`).run(texto, item.id);
   try {
-    await evolution.enviarTexto(instancia, item.numero, item.texto, { delay: Math.round(aleatorio(2000, 5000) * ESCALA) });
+    await evolution.enviarTexto(instancia, item.numero, texto, { delay: Math.round(aleatorio(2000, 5000) * ESCALA) });
     ok = true;
   } catch (e) {
     db.prepare(`UPDATE whatsapp_fila SET status='erro', erro=?, enviado_em=datetime('now','localtime') WHERE id=?`).run(e.message, item.id);
