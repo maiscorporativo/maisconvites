@@ -21,12 +21,12 @@ function nomeInstancia(eventoId) {
   return `evento_${Number(eventoId)}`;
 }
 
-async function chamar(metodo, caminho, corpo) {
+async function chamar(metodo, caminho, corpo, timeout = TIMEOUT) {
   const resp = await fetch(`${base()}${caminho}`, {
     method: metodo,
     headers: headers(),
     body: corpo ? JSON.stringify(corpo) : undefined,
-    signal: AbortSignal.timeout(TIMEOUT),
+    signal: AbortSignal.timeout(timeout),
   });
   const dados = await resp.json().catch(() => ({}));
   return { resp, dados };
@@ -76,12 +76,15 @@ async function removerInstancia(nome) {
 async function enviarTexto(nome, numero, texto, opcoes = {}) {
   const caminho = `/message/sendText/${encodeURIComponent(nome)}`;
   const delay = Number(opcoes.delay) || 0;
-  let { resp, dados } = await chamar('POST', caminho, { number: numero, text: texto, ...(delay ? { delay } : {}) });
+  // A Evolution só responde depois do "digitando…" + entrega: 10 s pode estourar e marcar
+  // como falha uma mensagem que na verdade foi enviada
+  const espera = TIMEOUT + delay + 20000;
+  let { resp, dados } = await chamar('POST', caminho, { number: numero, text: texto, ...(delay ? { delay } : {}) }, espera);
   if (resp.status === 400) {
     ({ resp, dados } = await chamar('POST', caminho, {
       number: numero, textMessage: { text: texto },
       ...(delay ? { options: { delay, presence: 'composing' } } : {}),
-    }));
+    }, espera));
   }
   if (!resp.ok) throw new Error(extrairErro(dados));
   return dados;

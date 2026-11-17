@@ -919,6 +919,7 @@ Nos vemos lá!`,
               <span class="dest-info"><strong>${esc(x.nome)}</strong><small>${esc(x.destino)}</small></span>
               ${x.status === 'enviado' ? '<span class="selo selo-confirmado">Enviado</span>'
                 : x.status === 'pendente' ? '<span class="selo selo-pendente">Na fila</span>'
+                : x.status === 'enviando' ? '<span class="selo selo-pendente">Enviando…</span>'
                 : x.status === 'cancelado' ? '<span class="selo selo-pendente">Cancelado</span>'
                 : `<span class="selo selo-cancelado" title="${esc(x.erro || x.status)}">Falhou</span>`}
             </div>`).join('') : '<p style="padding:12px">Nenhum envio registrado.</p>'}

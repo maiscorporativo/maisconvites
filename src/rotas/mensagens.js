@@ -258,8 +258,10 @@ function dispararWhatsapp(req, res, evento, modelo) {
   for (const c of convidados) {
     const numero = soDigitos(c.telefone);
     if (numero.length < 12 || numero.length > 13) { semTelefone++; continue; }
-    if (vistos.has(numero)) { duplicados++; continue; }
-    vistos.add(numero);
+    // celular com e sem o 9º dígito (55 11 9xxxx-xxxx × 55 11 xxxx-xxxx) é o mesmo WhatsApp
+    const chave = numero.length === 12 && /[6-9]/.test(numero[4]) ? numero.slice(0, 4) + '9' + numero.slice(4) : numero;
+    if (vistos.has(chave)) { duplicados++; continue; }
+    vistos.add(chave);
     itens.push({ convidado: c, numero, texto: textoWhatsappMensagem(modelo, evento, c) });
   }
   if (!itens.length) return res.status(400).json({ erro: 'Nenhum dos convidados selecionados tem WhatsApp/telefone válido cadastrado.' });

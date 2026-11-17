@@ -1,5 +1,8 @@
 'use strict';
 require('dotenv').config();
+// Fuso horário do sistema: a hospedagem roda em UTC; sem isto, horários gravados com
+// 'localtime' e janelas de envio ficariam 3 h adiantados em relação a Brasília.
+process.env.TZ = process.env.FUSO_HORARIO || 'America/Sao_Paulo';
 const express = require('express');
 const session = require('express-session');
 const path = require('node:path');

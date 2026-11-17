@@ -13,6 +13,9 @@ const DATA_DIR = process.env.DATA_DIR
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const db = new DatabaseSync(path.join(DATA_DIR, 'sistema.db'));
+// Mais de um processo pode abrir o banco ao mesmo tempo (ex.: durante um deploy):
+// espera a trava liberar em vez de falhar com "database is locked"
+db.exec('PRAGMA busy_timeout = 5000');
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
 

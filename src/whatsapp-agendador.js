@@ -51,32 +51,56 @@ function normalizarConfig(entrada = {}) {
   return cfg;
 }
 
+// ── Horário SEMPRE no fuso do evento (padrão: Brasília), nunca no relógio do servidor ──
+// A hospedagem roda em UTC (3 h à frente de Brasília): usar getHours() fazia a janela
+// 08:00–20:00 valer como 05:00–17:00 no Brasil. Tudo aqui passa pelo Intl com timeZone fixo.
+const FUSO = process.env.FUSO_HORARIO || 'America/Sao_Paulo';
+const partesFormatador = new Intl.DateTimeFormat('en-CA', {
+  timeZone: FUSO, hourCycle: 'h23',
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+});
+function noFuso(d) {
+  const p = Object.fromEntries(partesFormatador.formatToParts(d).map(x => [x.type, x.value]));
+  return { dia: `${p.year}-${p.month}-${p.day}`, h: Number(p.hour), m: Number(p.minute), s: Number(p.second) };
+}
+
 function dentroDoHorario(agora, cfg) {
-  const m = agora.getHours() * 60 + agora.getMinutes();
-  return m >= minutosDoDia(cfg.hora_inicio) && m < minutosDoDia(cfg.hora_fim);
+  const { h, m } = noFuso(agora);
+  const min = h * 60 + m;
+  return min >= minutosDoDia(cfg.hora_inicio) && min < minutosDoDia(cfg.hora_fim);
 }
 
-// Próximo instante em que a janela abre (hoje, se ainda não abriu; senão amanhã)
+// Próximo instante em que a janela abre (hoje, se ainda não abriu; senão amanhã), no fuso do evento
 function proximaAbertura(agora, cfg, pularHoje = false) {
-  const [h, m] = cfg.hora_inicio.split(':').map(Number);
-  const d = new Date(agora); d.setHours(h, m, 0, 0);
-  if (pularHoje || d <= agora) d.setDate(d.getDate() + 1);
-  return d;
+  const { h, m, s } = noFuso(agora);
+  const agoraMin = h * 60 + m;
+  let falta = minutosDoDia(cfg.hora_inicio) - agoraMin; // minutos até a abertura de hoje
+  if (pularHoje || falta <= 0) falta += 24 * 60;
+  return new Date(agora.getTime() + falta * 60000 - s * 1000 - agora.getMilliseconds());
 }
 
-const horaBr = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const horaBr = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: FUSO });
 const quandoBr = d => {
-  const hoje = new Date(); const amanha = new Date(); amanha.setDate(hoje.getDate() + 1);
-  if (d.toDateString() === hoje.toDateString()) return `hoje às ${horaBr(d)}`;
-  if (d.toDateString() === amanha.toDateString()) return `amanhã às ${horaBr(d)}`;
-  return `${d.toLocaleDateString('pt-BR')} às ${horaBr(d)}`;
+  const dia = noFuso(d).dia;
+  if (dia === noFuso(new Date()).dia) return `hoje às ${horaBr(d)}`;
+  if (dia === noFuso(new Date(Date.now() + 86400000)).dia) return `amanhã às ${horaBr(d)}`;
+  return `${d.toLocaleDateString('pt-BR', { timeZone: FUSO })} às ${horaBr(d)}`;
 };
 
+// Início do dia de hoje (meia-noite no fuso do evento) em UTC, no formato do SQLite
+function inicioDoDiaUtc() {
+  const agora = new Date();
+  const { h, m, s } = noFuso(agora);
+  const meiaNoite = new Date(agora.getTime() - ((h * 60 + m) * 60 + s) * 1000 - agora.getMilliseconds());
+  return meiaNoite.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+// envios.criado_em é gravado em UTC (datetime('now')): compara com a meia-noite do fuso em UTC
 function enviadosHojeNoEvento(eventoId) {
   return db.prepare(`
     SELECT COUNT(*) n FROM envios en JOIN convidados c ON c.id = en.convidado_id
     WHERE c.evento_id=? AND en.canal='whatsapp' AND en.status='enviado'
-      AND date(en.criado_em,'localtime') = date('now','localtime')`).get(eventoId).n;
+      AND en.criado_em >= ?`).get(eventoId, inicioDoDiaUtc()).n;
 }
 
 function atualizarDisparo(id, campos) {
@@ -87,7 +111,7 @@ function atualizarDisparo(id, campos) {
 
 function contarFila(disparoId) {
   const r = db.prepare(`SELECT status, COUNT(*) n FROM whatsapp_fila WHERE disparo_id=? GROUP BY status`).all(disparoId);
-  const c = { pendente: 0, enviado: 0, erro: 0, cancelado: 0 };
+  const c = { pendente: 0, enviando: 0, enviado: 0, erro: 0, cancelado: 0 };
   for (const x of r) c[x.status] = x.n;
   return c;
 }
@@ -184,6 +208,8 @@ async function processarDisparo(d) {
   }
   // 3) Próxima mensagem da fila
   const item = db.prepare(`SELECT * FROM whatsapp_fila WHERE disparo_id=? AND status='pendente' ORDER BY id LIMIT 1`).get(d.id);
+  // Reserva atômica do item: se outro processo já o pegou, não envia de novo
+  if (item && db.prepare(`UPDATE whatsapp_fila SET status='enviando' WHERE id=? AND status='pendente'`).run(item.id).changes === 0) return;
   if (!item) {
     const c = contarFila(d.id);
     atualizarDisparo(d.id, { situacao: 'concluido', motivo: '', enviados: c.enviado, falhas: c.erro, proximo_envio_ts: null,
@@ -196,6 +222,7 @@ async function processarDisparo(d) {
     if (await evolution.estadoInstancia(nome) === 'open') { instancia = nome; break; }
   }
   if (!instancia) {
+    db.prepare(`UPDATE whatsapp_fila SET status='pendente' WHERE id=? AND status='enviando'`).run(item.id);
     pausar(d, 'O WhatsApp está desconectado. Conecte o número na aba Envio e clique em “Retomar”.');
     return;
   }
@@ -248,8 +275,15 @@ async function processarDisparo(d) {
 async function tick() {
   const prontos = db.prepare(`SELECT * FROM mensagem_disparos WHERE canal='whatsapp' AND situacao='andamento'
                               AND (proximo_envio_ts IS NULL OR proximo_envio_ts <= ?)`).all(Date.now());
+  const agora = Date.now();
   for (const d of prontos) {
     if (emProcessamento.has(d.id)) continue;
+    // Trava atômica no banco: com mais de um processo do sistema rodando (deploy/cluster),
+    // só quem conseguir empurrar o proximo_envio_ts processa este disparo agora.
+    // processarDisparo sempre regrava o proximo_envio_ts (ou pausa/conclui) ao terminar.
+    const trava = db.prepare(`UPDATE mensagem_disparos SET proximo_envio_ts=? WHERE id=? AND situacao='andamento'
+                              AND (proximo_envio_ts IS NULL OR proximo_envio_ts <= ?)`).run(agora + 5 * 60000, d.id, agora);
+    if (trava.changes === 0) continue;
     emProcessamento.add(d.id);
     processarDisparo(d)
       .catch(e => { try { pausar(d, 'Erro inesperado: ' + e.message); } catch {} })
@@ -267,4 +301,5 @@ function iniciarAgendador() {
 module.exports = {
   PRESETS, normalizarConfig, criarDisparo, disparoWhatsappAtivo, pausar, retomar, cancelar, resumo,
   iniciarAgendador,
+  _teste: { dentroDoHorario, proximaAbertura, inicioDoDiaUtc }, // usado só em testes
 };
