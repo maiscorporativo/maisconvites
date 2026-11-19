@@ -110,7 +110,12 @@ function gerarRelatorioXlsx(tipo, evento, filtros = {}) {
       ['Mesa', 'Nome da mesa', 'Lugares', 'Cadeira', 'Convidado', 'Empresa'],
       linhas, [8, 20, 10, 10, 28, 26]);
   } else if (tipo === 'etiquetas') {
-    const lista = buscarConvidados(evento.id, filtros);
+    // Mesma ordem das etiquetas impressas: empresa A→Z, convidados A→Z, individuais no fim
+    const alfa = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true });
+    const emp = c => (c.empresa_id ? String(c.empresa_nome || '').trim() : '');
+    const lista = buscarConvidados(evento.id, filtros).sort((a, b) =>
+      (emp(a) === '') - (emp(b) === '') || alfa.compare(emp(a), emp(b)) ||
+      alfa.compare(String(a.nome || '').trim(), String(b.nome || '').trim()));
     aba(wb, 'Convites e links',
       ['Nome', 'Empresa', 'Cargo', ...(mapaAtivo ? ['Assento'] : []), 'Status', 'Link do convite'],
       lista.map(c => [c.nome, c.empresa_nome || 'Individual', c.cargo || '',

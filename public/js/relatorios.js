@@ -237,10 +237,23 @@ async function relEtiquetas(el, lista) {
   let qrs = {};
   try { qrs = await api(`/api/admin/eventos/${eventoId}/qrcodes`); }
   catch (e) { el.innerHTML = `<p>${esc(e.message)}</p>`; return; }
-  const ordenada = [...lista].sort((a, b) =>
-    (a.empresa_nome || 'zzz').localeCompare(b.empresa_nome || 'zzz') || a.nome.localeCompare(b.nome));
-  el.innerHTML = `
-    <div class="etiquetas">${ordenada.map(c => `
+  // Agrupa por empresa (A→Z); dentro de cada empresa, convidados A→Z; convites individuais no fim.
+  // Ordem em português: ignora maiúsculas/acentos/espaços sobrando e trata números como números.
+  const alfa = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true });
+  const limpo = s => String(s || '').trim();
+  const grupos = new Map();
+  for (const c of lista) {
+    const chave = c.empresa_id ? limpo(c.empresa_nome) || 'Empresa sem nome' : '';
+    if (!grupos.has(chave)) grupos.set(chave, []);
+    grupos.get(chave).push(c);
+  }
+  const ordemGrupos = [...grupos.keys()].sort((a, b) => (a === '') - (b === '') || alfa.compare(a, b));
+  el.innerHTML = ordemGrupos.map(chave => {
+    const seus = grupos.get(chave).sort((a, b) => alfa.compare(limpo(a.nome), limpo(b.nome)));
+    return `
+    <div class="grupo-etiquetas">
+      <h2 class="titulo-empresa">${esc(chave || 'Convites individuais')} <small>(${seus.length})</small></h2>
+      <div class="etiquetas">${seus.map(c => `
       <div class="etiqueta">
         ${qrs[c.id] ? `<img src="${qrs[c.id]}" alt="QR">` : ''}
         <div class="ei">
@@ -250,5 +263,7 @@ async function relEtiquetas(el, lista) {
           <div class="codigo">Código: <b>${esc(c.codigo ? String(c.codigo).replace(/(.{3})/g, '$1 ').trim() : c.token)}</b></div>
         </div>
       </div>`).join('')}
+      </div>
     </div>`;
+  }).join('') || '<p>Nenhum convidado para gerar etiquetas.</p>';
 }
