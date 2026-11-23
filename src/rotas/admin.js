@@ -840,8 +840,41 @@ router.post('/checkin', (req, res) => {
   if (c.status === 'checkin') {
     return res.json({ ok: true, repetido: true, mensagem: `${c.nome} já fez check-in em ${c.checkin_em}.`, convidado: c });
   }
-  db.prepare(`UPDATE convidados SET status='checkin', checkin_em=datetime('now','localtime') WHERE id=?`).run(c.id);
+  db.prepare(`UPDATE convidados SET status='checkin', status_antes_checkin=status, checkin_em=datetime('now','localtime'), checkin_por=? WHERE id=?`)
+    .run('QR code / ' + descreverUsuario(req.session.usuario), c.id);
   res.json({ ok: true, mensagem: `Check-in confirmado: ${c.nome}`, convidado: { ...c, status: 'checkin' } });
+});
+
+// ── Link da lista de credenciamento (equipe externa, sem login) ──
+const crypto = require('node:crypto');
+function urlCredenciamento(token) {
+  return `${(process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '')}/credenciamento/${token}`;
+}
+
+router.get('/eventos/:id/credenciamento-link', (req, res) => {
+  const e = eventoDoEscopo(req, res, req.params.id);
+  if (!e) return;
+  const l = db.prepare(`SELECT * FROM credenciamento_links WHERE evento_id=?`).get(e.id);
+  res.json(l ? { ativo: true, url: urlCredenciamento(l.token), criado_em: l.criado_em, criado_por: l.criado_por } : { ativo: false });
+});
+
+// Gera (ou troca) o link: o anterior deixa de funcionar na hora
+router.post('/eventos/:id/credenciamento-link', (req, res) => {
+  const e = eventoDoEscopo(req, res, req.params.id);
+  if (!e) return;
+  const token = crypto.randomBytes(24).toString('base64url');
+  db.prepare(`INSERT INTO credenciamento_links (evento_id, token, criado_por, criado_em)
+              VALUES (?, ?, ?, datetime('now','localtime'))
+              ON CONFLICT(evento_id) DO UPDATE SET token=excluded.token, criado_por=excluded.criado_por, criado_em=excluded.criado_em`)
+    .run(e.id, token, descreverUsuario(req.session.usuario));
+  res.json({ ativo: true, url: urlCredenciamento(token) });
+});
+
+router.delete('/eventos/:id/credenciamento-link', (req, res) => {
+  const e = eventoDoEscopo(req, res, req.params.id);
+  if (!e) return;
+  db.prepare(`DELETE FROM credenciamento_links WHERE evento_id=?`).run(e.id);
+  res.json({ ativo: false });
 });
 
 router.get('/eventos/:id/checkins', (req, res) => {

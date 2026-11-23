@@ -29,6 +29,7 @@ app.use('/api/admin', require('./src/rotas/admin'));
 app.use('/api/admin', require('./src/rotas/mensagens'));
 app.use('/api/empresa', require('./src/rotas/empresa'));
 app.use('/', require('./src/rotas/publico'));
+app.use('/', require('./src/rotas/credenciamento')); // lista da recepção externa (link secreto, sem login)
 
 app.use(express.static(path.join(__dirname, 'public')));
 

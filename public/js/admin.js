@@ -194,6 +194,7 @@ async function recarregar() {
   desenharConvidados();
   mapa.atualizar(estado.mesas, estado.ocupantes);
   desenharCheckins(checkins);
+  carregarLinkCredenciamento();
   desenharRelatorios();
   desenharEventosMaster();
   if (window.carregarMensagens && document.getElementById('secao-mensagens').classList.contains('ativa')) {
@@ -1207,6 +1208,54 @@ async function fazerCheckin(token) {
   } catch (e) {
     area.innerHTML = `<div class="aviso-caixa aviso-erro" style="font-size:16px">❌ ${esc(e.message)}</div>`;
   }
+}
+
+// ── Link da lista de credenciamento (equipe externa, sem login) ──
+async function carregarLinkCredenciamento() {
+  const area = document.getElementById('cred-link-area');
+  if (!area || !estado.eventoId) return;
+  try {
+    desenharLinkCredenciamento(await api(`/api/admin/eventos/${estado.eventoId}/credenciamento-link`));
+  } catch (e) { area.innerHTML = `<div class="aviso-caixa aviso-erro">${esc(e.message)}</div>`; }
+}
+
+function desenharLinkCredenciamento(l) {
+  const area = document.getElementById('cred-link-area');
+  if (!l.ativo) {
+    area.innerHTML = `<button class="botao-ouro" id="cred-gerar">Gerar link da lista</button>`;
+  } else {
+    area.innerHTML = `
+      <div class="linha-flex">
+        <div><label>Link da lista (envie só para a equipe da recepção)</label>
+          <input id="cred-url" readonly value="${esc(l.url)}" onclick="this.select()"></div>
+        <div class="curto"><button class="botao-ouro" id="cred-copiar">Copiar link</button></div>
+        <div class="curto"><button class="botao-claro" id="cred-abrir">Abrir lista</button></div>
+      </div>
+      <p style="margin-top:10px;font-size:13px;color:var(--neutro-500)">
+        Quem tiver o link consegue marcar presenças. Se ele cair em mãos erradas, gere um novo: o anterior para de funcionar na hora.
+        <br><button class="botao-claro" id="cred-novo" style="margin-top:8px">Gerar novo link</button>
+        <button class="botao-claro" id="cred-desativar" style="margin-top:8px">Desativar link</button>
+      </p>`;
+  }
+  const gerar = async (confirmar) => {
+    if (confirmar && !confirm(confirmar)) return;
+    try { desenharLinkCredenciamento(await api(`/api/admin/eventos/${estado.eventoId}/credenciamento-link`, { method: 'POST' })); toast('Link gerado.', 'ok'); }
+    catch (e) { toast(e.message, 'erro'); }
+  };
+  document.getElementById('cred-gerar')?.addEventListener('click', () => gerar());
+  document.getElementById('cred-abrir')?.addEventListener('click', () => window.open(l.url, '_blank', 'noopener,noreferrer'));
+  document.getElementById('cred-novo')?.addEventListener('click', () =>
+    gerar('Gerar um novo link? O link atual deixa de funcionar imediatamente para quem estiver usando.'));
+  document.getElementById('cred-desativar')?.addEventListener('click', async () => {
+    if (!confirm('Desativar o link? A equipe da recepção perde o acesso à lista.')) return;
+    try { desenharLinkCredenciamento(await api(`/api/admin/eventos/${estado.eventoId}/credenciamento-link`, { method: 'DELETE' })); toast('Link desativado.', 'ok'); }
+    catch (e) { toast(e.message, 'erro'); }
+  });
+  document.getElementById('cred-copiar')?.addEventListener('click', async () => {
+    const campo = document.getElementById('cred-url');
+    try { await navigator.clipboard.writeText(campo.value); } catch { campo.select(); document.execCommand('copy'); }
+    toast('Link copiado.', 'ok');
+  });
 }
 
 function desenharCheckins(lista) {

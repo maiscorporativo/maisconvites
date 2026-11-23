@@ -185,6 +185,21 @@ CREATE TABLE IF NOT EXISTS whatsapp_fila (
 CREATE INDEX IF NOT EXISTS idx_whatsapp_fila_disparo ON whatsapp_fila(disparo_id, status);
 `);
 
+// Lista de credenciamento para equipe externa (recepção terceirizada): acesso sem login,
+// só por link secreto. Fica em tabela própria (e não em `eventos`) para o token nunca
+// vazar nas rotas que devolvem o evento inteiro (ex.: painel das empresas).
+db.exec(`
+CREATE TABLE IF NOT EXISTS credenciamento_links (
+  evento_id INTEGER PRIMARY KEY REFERENCES eventos(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  criado_por TEXT DEFAULT '',
+  criado_em TEXT DEFAULT (datetime('now','localtime'))
+);
+`);
+try { db.exec(`ALTER TABLE convidados ADD COLUMN checkin_por TEXT`); } catch { /* já existe */ }
+// status antes do check-in: permite desfazer um "tique" errado voltando exatamente ao que era
+try { db.exec(`ALTER TABLE convidados ADD COLUMN status_antes_checkin TEXT`); } catch { /* já existe */ }
+
 // Disparos de e-mail em andamento quando o servidor caiu/reiniciou não continuam sozinhos
 // (os de WhatsApp continuam: a fila está no banco e o agendador retoma de onde parou)
 db.exec(`UPDATE mensagem_disparos SET situacao='interrompido', concluido_em=datetime('now','localtime')
