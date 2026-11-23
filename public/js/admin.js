@@ -978,9 +978,9 @@ document.getElementById('btn-filtro-cancelados').addEventListener('click', () =>
 });
 
 function desenharConvidados() {
-  const filtro = (document.getElementById('filtro-convidados').value || '').toLowerCase();
+  const filtro = textoBusca(document.getElementById('filtro-convidados').value).trim();
   const lista = estado.convidados.filter(c =>
-    !filtro || [c.nome, c.empresa_nome, c.status, c.tipo].join(' ').toLowerCase().includes(filtro));
+    !filtro || textoBusca(c.nome, c.empresa_nome, c.cargo, c.email, c.telefone, c.codigo, c.status, c.tipo).includes(filtro));
   const t = document.getElementById('tabela-convidados');
   if (!lista.length) { t.innerHTML = '<tr><td>Nenhum convidado encontrado.</td></tr>'; return; }
   const mapaAtivo = estado.evento ? estado.evento.mapa_mesas !== 0 : true;

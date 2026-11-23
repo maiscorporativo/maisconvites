@@ -32,6 +32,11 @@ function toast(msg, tipo = 'info') {
   setTimeout(() => el.remove(), 6000);
 }
 
+// Texto para busca: sem acentos e minúsculo ("nestle" encontra "NESTLÉ")
+function textoBusca(...partes) {
+  return partes.map(p => String(p ?? '')).join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

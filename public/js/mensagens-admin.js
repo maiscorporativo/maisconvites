@@ -534,9 +534,9 @@ Nos vemos lá!`,
     const caixaWa = modal.querySelector('#ds-wa');
 
     function visiveis() {
-      const q = busca.value.trim().toLowerCase();
+      const q = textoBusca(busca.value).trim();
       return ativos.filter(FILTROS[filtroStatus].teste).filter(c =>
-        !q || [c.nome, c.empresa_nome, c.email, c.telefone].join(' ').toLowerCase().includes(q));
+        !q || textoBusca(c.nome, c.empresa_nome, c.email, c.telefone).includes(q));
     }
 
     function desenhar() {
