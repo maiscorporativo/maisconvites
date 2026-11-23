@@ -83,6 +83,13 @@
       padding: 8px 12px; border-radius: 7px; cursor: pointer; white-space: nowrap;
     }
     .filtros button.ativo { background: var(--azul); color: #fff; }
+    .baixar {
+      display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px;
+      background: var(--grad-marca); color: #33230a; font-weight: 700; font-size: 13.5px; text-decoration: none;
+      white-space: nowrap; box-shadow: 0 2px 8px rgba(232,78,39,.25);
+    }
+    .baixar:hover { filter: brightness(1.04); }
+    .baixar svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
     .info-busca { max-width: 1100px; margin: 0 auto; padding: 0 20px 10px; font-size: 12.5px; color: var(--suave); }
 
     /* ── Planilha ── */
@@ -189,6 +196,7 @@
       .sub-st { display: block !important; margin-top: 4px; }
       .sub-st .selo { font-size: 11px; padding: 2px 8px; }
       .filtros { flex-wrap: wrap; }
+      .baixar { width: 100%; justify-content: center; }
       .filtros button { flex: 1 1 40%; }
       .codigo { font-size: 12.5px; letter-spacing: .03em; }
     }
@@ -220,6 +228,8 @@
         <button data-f="presentes">Presentes</button>
         <button data-f="nao_confirmados">Não confirmaram</button>
       </div>
+      <a class="baixar" id="baixar" href="#" title="Baixar a lista em Excel (.xlsx)">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Baixar planilha</a>
     </div>
     <div class="info-busca" id="info-busca"></div>
   </div>
@@ -408,6 +418,7 @@
     desenhar();
   });
 
+  $('baixar').href = API + '/planilha';
   carregar(true);
   // Sincroniza com outros celulares da recepção e com o check-in por QR code
   setInterval(() => { if (!document.hidden && !salvando.size) carregar(false); }, 10000);

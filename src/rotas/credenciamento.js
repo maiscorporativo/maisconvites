@@ -7,6 +7,7 @@
 const express = require('express');
 const path = require('node:path');
 const { db } = require('../db');
+const { gerarPlanilhaCredenciamento } = require('../credenciamento-xlsx');
 
 const router = express.Router();
 const PAGINA = path.join(__dirname, '..', '..', 'public', 'credenciamento.html');
@@ -55,6 +56,16 @@ router.get('/api/credenciamento/:token', (req, res) => {
     // Empresas A→Z (convites individuais no fim); convidados A→Z dentro de cada empresa
     .sort((a, b) => (a.empresa === '') - (b.empresa === '') || alfa.compare(a.empresa, b.empresa) || alfa.compare(a.nome, b.nome));
   res.json({ evento: { nome: evento.nome, data_evento: evento.data_evento, hora_evento: evento.hora_evento, local_nome: evento.local_nome }, convidados: lista });
+});
+
+// Planilha da lista (mesmo formato da planilha de trabalho do organizador)
+router.get('/api/credenciamento/:token/planilha', (req, res) => {
+  const evento = eventoDoLink(req, res);
+  if (!evento) return;
+  const { buffer, nomeArquivo } = gerarPlanilhaCredenciamento(evento);
+  res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.set('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
+  res.send(buffer);
 });
 
 // Marca / desmarca presença
