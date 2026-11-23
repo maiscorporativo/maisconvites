@@ -37,7 +37,7 @@ router.get('/api/credenciamento/:token', (req, res) => {
   const evento = eventoDoLink(req, res);
   if (!evento) return;
   const lista = db.prepare(`
-    SELECT c.id, c.nome, c.codigo, c.status, c.checkin_em, c.empresa_id, u.empresa_nome
+    SELECT c.id, c.nome, c.codigo, c.status, c.status_antes_checkin, c.confirmado_em, c.checkin_em, c.empresa_id, u.empresa_nome
     FROM convidados c LEFT JOIN usuarios u ON u.id = c.empresa_id
     WHERE c.evento_id=? AND c.status!='cancelado'`).all(evento.id)
     .map(c => ({
@@ -45,6 +45,10 @@ router.get('/api/credenciamento/:token', (req, res) => {
       nome: limpo(c.nome),
       empresa: c.empresa_id ? (limpo(c.empresa_nome) || 'Empresa sem nome') : '',
       codigo: c.codigo || '',
+      // Situação do convite (como no relatório). A chegada já aparece na caixa marcada; para quem
+      // já fez check-in mostra o status que tinha antes (confirmou ou não), que é o que interessa à recepção.
+      situacao: c.status !== 'checkin' ? c.status
+        : (['pendente', 'enviado', 'confirmado'].includes(c.status_antes_checkin) ? c.status_antes_checkin : c.confirmado_em ? 'confirmado' : 'enviado'),
       presente: c.status === 'checkin',
       hora: c.status === 'checkin' && c.checkin_em ? String(c.checkin_em).slice(11, 16) : '',
     }))

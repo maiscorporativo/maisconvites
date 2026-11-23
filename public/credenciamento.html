@@ -119,6 +119,16 @@
     .empresa { color: var(--suave); }
     .codigo { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 13.5px; letter-spacing: .06em; color: var(--texto); }
     .hora { color: var(--ok); font-weight: 600; font-size: 13px; }
+    .col-st { width: 150px; }
+    .selo {
+      display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px;
+      font-size: 12px; font-weight: 600; border: 1px solid transparent; white-space: nowrap;
+    }
+    .selo::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .st-confirmado { background: #e7f5ec; color: #15803d; border-color: #c3e5d0; }
+    .st-enviado { background: #ecf3fa; color: #2d5c8f; border-color: #d3e2f2; }
+    .st-pendente { background: #f1f5f9; color: #47586e; border-color: #e3eaf2; }
+    .sub-st { display: none; }
     mark { background: #fde7b8; color: inherit; border-radius: 3px; padding: 0 1px; }
 
     /* linha marcada como presente */
@@ -175,6 +185,11 @@
       /* empresa vai para baixo do nome no celular */
       .planilha th.c-emp, .planilha td.c-emp { display: none; }
       .sub-emp { display: block !important; font-size: 12px; color: var(--suave); font-weight: 400; }
+      .planilha th.c-st, .planilha td.c-st { display: none; }
+      .sub-st { display: block !important; margin-top: 4px; }
+      .sub-st .selo { font-size: 11px; padding: 2px 8px; }
+      .filtros { flex-wrap: wrap; }
+      .filtros button { flex: 1 1 40%; }
       .codigo { font-size: 12.5px; letter-spacing: .03em; }
     }
     .sub-emp { display: none; }
@@ -203,6 +218,7 @@
         <button data-f="todos" class="ativo">Todos</button>
         <button data-f="ausentes">Não chegaram</button>
         <button data-f="presentes">Presentes</button>
+        <button data-f="nao_confirmados">Não confirmaram</button>
       </div>
     </div>
     <div class="info-busca" id="info-busca"></div>
@@ -239,6 +255,8 @@
     if (i < 0) return esc(texto);
     return esc(texto.slice(0, i)) + '<mark>' + esc(texto.slice(i, i + termo.length)) + '</mark>' + esc(texto.slice(i + termo.length));
   }
+  const NOMES_STATUS = { confirmado: 'Confirmado', enviado: 'Convite enviado', pendente: 'Pendente' };
+  const selo = s => '<span class="selo st-' + esc(s) + '">' + esc(NOMES_STATUS[s] || s) + '</span>';
   const codigoFmt = c => String(c || '').replace(/(\d{3})(?=\d)/g, '$1 ');
 
   async function chamar(url, opcoes) {
@@ -273,6 +291,7 @@
     const visiveis = convidados.filter(c => {
       if (filtro === 'presentes' && !c.presente) return false;
       if (filtro === 'ausentes' && c.presente) return false;
+      if (filtro === 'nao_confirmados' && c.situacao === 'confirmado') return false;
       if (!termo) return true;
       return norm(c.nome).includes(termo) || norm(c.empresa || 'convites individuais').includes(termo) ||
         (termoDig.length >= 3 && c.codigo.includes(termoDig));
@@ -284,7 +303,7 @@
 
     if (!visiveis.length) {
       $('folha').innerHTML = '<div class="planilha vazio"><b>' +
-        (termo ? 'Ninguém encontrado com “' + esc(termoBruto) + '”' : filtro === 'presentes' ? 'Ninguém marcado como presente ainda' : 'Todos já chegaram 🎉') +
+        (termo ? 'Ninguém encontrado com “' + esc(termoBruto) + '”' : filtro === 'presentes' ? 'Ninguém marcado como presente ainda' : filtro === 'nao_confirmados' ? 'Todos os convidados confirmaram' : 'Todos já chegaram 🎉') +
         '</b>' + (termo ? 'Confira a grafia ou busque pelo sobrenome, empresa ou código.' : '') + '</div>';
       return;
     }
@@ -298,21 +317,23 @@
 
     let html = '<table class="planilha"><thead><tr>' +
       '<th class="col-check">✓</th><th>Nome</th><th class="col-emp c-emp">Empresa</th>' +
-      '<th class="col-cod">Código</th><th class="col-hora c-hora">Chegada</th></tr></thead><tbody>';
+      '<th class="col-st c-st">Status</th><th class="col-cod">Código</th><th class="col-hora c-hora">Chegada</th></tr></thead><tbody>';
     let grupoAtual = null;
     for (const c of visiveis) {
       if (c.empresa !== grupoAtual) {
         grupoAtual = c.empresa;
         const t = totais[c.empresa];
-        html += '<tr class="grupo"><td colspan="5">' + esc(c.empresa || 'Convites individuais') +
+        html += '<tr class="grupo"><td colspan="6">' + esc(c.empresa || 'Convites individuais') +
           '<span class="' + (t.p === t.t ? 'tudo-ok' : '') + '">' + t.p + ' de ' + t.t + ' presente' + (t.t === 1 ? '' : 's') + '</span></td></tr>';
       }
       html += '<tr class="pessoa' + (c.presente ? ' presente' : '') + '" data-id="' + c.id + '">' +
         '<td class="col-check"><label class="tique' + (salvando.has(c.id) ? ' salvando' : '') + '" title="' + (c.presente ? 'Desmarcar' : 'Marcar presença') + '">' +
           '<input type="checkbox" data-id="' + c.id + '"' + (c.presente ? ' checked' : '') + ' aria-label="Presença de ' + esc(c.nome) + '">' +
           '<span class="caixa">' + CHECK + '</span></label></td>' +
-        '<td><span class="nome">' + destacar(c.nome, termo) + '</span><span class="sub-emp">' + destacar(c.empresa || 'Convite individual', termo) + '</span></td>' +
+        '<td><span class="nome">' + destacar(c.nome, termo) + '</span><span class="sub-emp">' + destacar(c.empresa || 'Convite individual', termo) + '</span>' +
+          '<span class="sub-st">' + selo(c.situacao) + '</span></td>' +
         '<td class="empresa c-emp">' + destacar(c.empresa || 'Convite individual', termo) + '</td>' +
+        '<td class="c-st">' + selo(c.situacao) + '</td>' +
         '<td class="codigo">' + esc(codigoFmt(c.codigo)) + '</td>' +
         '<td class="hora c-hora">' + (c.presente ? esc(c.hora || '✓') : '') + '</td></tr>';
     }
