@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Teste da impressora</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root {
+      --azul: #002042; --azul-2: #0b3463; --laranja: #f7ad40; --laranja-escuro: #e84e27;
+      --grad-marca: linear-gradient(135deg, var(--laranja) 0%, var(--laranja-escuro) 100%);
+      --texto: #1d2a3c; --suave: #64748b; --borda: #e3eaf2; --borda-forte: #cdd8e4;
+      --fundo: #f1f5f9; --painel: #fff; --ok: #15803d; --ok-fundo: #e7f5ec; --erro: #cf3a1a; --erro-fundo: #fdece7;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { font-family: 'Inter', system-ui, Arial, sans-serif; color: var(--texto); background: var(--fundo); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+    header { background: var(--azul); color: #fff; padding: 16px 20px; display: flex; align-items: center; gap: 14px; }
+    header img { height: 30px; }
+    header h1 { font-size: 18px; margin: 0; font-weight: 700; }
+    header p { margin: 0; font-size: 13px; opacity: .75; }
+    main { max-width: 1180px; margin: 0 auto; padding: 18px 16px 40px; display: grid; grid-template-columns: 360px 1fr; gap: 16px; }
+    .cartao { background: var(--painel); border: 1px solid var(--borda); border-radius: 14px; padding: 16px; }
+    .cartao h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--suave); margin: 0 0 12px; font-weight: 700; }
+    .cartao + .cartao { margin-top: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+    input, select { width: 100%; font: inherit; padding: 10px 12px; border: 1.5px solid var(--borda-forte); border-radius: 10px; background: #fff; color: var(--texto); }
+    input:focus, select:focus { outline: none; border-color: var(--laranja); box-shadow: 0 0 0 3px rgba(247,173,64,.25); }
+    .linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .linha3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-weight: 600; font-size: 14px; }
+    .check input { width: 20px; height: 20px; }
+    button { font: inherit; font-weight: 700; border: 0; border-radius: 12px; padding: 14px 18px; cursor: pointer; }
+    .primario { background: var(--grad-marca); color: #fff; }
+    .secundario { background: var(--azul); color: #fff; }
+    .claro { background: #fff; color: var(--azul); border: 1.5px solid var(--borda-forte); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .acoes .largo { grid-column: 1 / -1; font-size: 17px; padding: 18px; }
+    .status { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--fundo); font-weight: 600; }
+    .status .ponto { width: 12px; height: 12px; border-radius: 50%; background: #97a6b8; flex: none; }
+    .status.ok { background: var(--ok-fundo); color: var(--ok); } .status.ok .ponto { background: var(--ok); }
+    .status.erro { background: var(--erro-fundo); color: var(--erro); } .status.erro .ponto { background: var(--erro); }
+    .previa { background: repeating-conic-gradient(#e9eef4 0 25%, #f6f8fb 0 50%) 0 0 / 18px 18px; border-radius: 12px; padding: 22px; display: flex; align-items: center; justify-content: center; min-height: 280px; }
+    .previa canvas { max-width: 100%; height: auto; box-shadow: 0 6px 22px rgba(0,32,66,.18); border-radius: 4px; background: #fff; image-rendering: pixelated; }
+    .legenda { font-size: 13px; color: var(--suave); margin-top: 10px; text-align: center; }
+    .diag { font-size: 13px; color: var(--suave); margin: 10px 0 0; padding-left: 18px; }
+    .diag li { margin: 3px 0; }
+    .diag b { color: var(--texto); }
+    .registro { font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: #0f172a; color: #cbd5e1; border-radius: 10px; padding: 10px 12px; max-height: 160px; overflow: auto; white-space: pre-wrap; margin-top: 12px; }
+    .registro:empty { display: none; }
+    details summary { cursor: pointer; font-weight: 700; color: var(--azul); margin-top: 6px; }
+    .dica { font-size: 13px; color: var(--suave); line-height: 1.5; }
+    .dica ol { padding-left: 18px; margin: 6px 0; }
+    @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/logo-branco.png" alt="">
+    <div><h1>Teste da impressora de etiquetas</h1><p>Totem de autocredenciamento · Zebra ZD220 e compatíveis (ZPL)</p></div>
+  </header>
+
+  <main>
+    <section>
+      <div class="cartao">
+        <h2>Impressora</h2>
+        <div class="status" id="status"><span class="ponto"></span><span id="status-texto">Verificando…</span></div>
+        <div class="acoes">
+          <button class="secundario largo" id="conectar">🔌 Conectar impressora USB</button>
+        </div>
+        <ul class="diag" id="diag"></ul>
+        <details>
+          <summary>Como ligar no tablet</summary>
+          <div class="dica">
+            <ol>
+              <li>Ligue a ZD220 no tablet com um cabo/adaptador <b>USB OTG</b> (USB-C → USB-A fêmea) e o cabo USB da impressora.</li>
+              <li>Abra esta página no <b>Google Chrome</b> (precisa ser https://).</li>
+              <li>Toque em <b>Conectar impressora USB</b> e escolha a Zebra na lista. Se o Android perguntar qual app usar, escolha o Chrome e marque “sempre”.</li>
+              <li>Nas próximas vezes ela conecta sozinha.</li>
+            </ol>
+          </div>
+        </details>
+      </div>
+
+      <div class="cartao">
+        <h2>Etiqueta</h2>
+        <label for="tamanho">Tamanho (largura × altura)</label>
+        <select id="tamanho"></select>
+        <div class="linha" id="medidas">
+          <div><label for="largura">Largura (mm)</label><input id="largura" type="number" min="20" max="104" step="1"></div>
+          <div><label for="altura">Altura (mm)</label><input id="altura" type="number" min="15" max="300" step="1"></div>
+        </div>
+        <div class="linha3">
+          <div><label for="rotacao">Rotação</label><select id="rotacao"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
+          <div><label for="ajusteX">Ajuste X (mm)</label><input id="ajusteX" type="number" step="0.5"></div>
+          <div><label for="ajusteY">Ajuste Y (mm)</label><input id="ajusteY" type="number" step="0.5"></div>
+        </div>
+        <label for="escuro">Escurecimento (−30 a 30)</label>
+        <input id="escuro" type="number" min="-30" max="30" step="1">
+        <label class="check"><input type="checkbox" id="comqr"> Com QR code</label>
+      </div>
+
+      <div class="cartao">
+        <h2>Dados de exemplo</h2>
+        <label for="d-nome">Nome</label><input id="d-nome">
+        <label for="d-empresa">Empresa</label><input id="d-empresa">
+        <label for="d-cargo">Cargo</label><input id="d-cargo">
+        <div class="linha">
+          <div><label for="d-categoria">Categoria</label><input id="d-categoria"></div>
+          <div><label for="d-codigo">Código</label><input id="d-codigo"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="cartao">
+        <h2>Pré-visualização (exatamente o que sai na térmica)</h2>
+        <div class="previa"><canvas id="tela"></canvas></div>
+        <div class="legenda" id="legenda"></div>
+        <div class="acoes">
+          <button class="primario largo" id="imprimir">🖨️ Imprimir etiqueta de teste</button>
+          <button class="claro" id="calibracao">📏 Imprimir calibração</button>
+          <button class="claro" id="sensor">⚙️ Calibrar sensor de etiqueta</button>
+          <button class="claro" id="navegador" style="grid-column:1/-1">Imprimir pela janela do navegador (alternativa)</button>
+        </div>
+        <div class="registro" id="registro"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/etiqueta.js"></script>
+  <script>
+  (function () {
+    const $ = id => document.getElementById(id);
+    const E = window.Etiqueta;
+    const CHAVE = 'totem-teste-config';
+    let cfg = {};
+    try { cfg = JSON.parse(localStorage.getItem(CHAVE) || '{}'); } catch {}
+    const salvar = () => { try { localStorage.setItem(CHAVE, JSON.stringify(cfg)); } catch {} };
+
+    function log(msg) {
+      const r = $('registro');
+      r.textContent += new Date().toLocaleTimeString('pt-BR') + '  ' + msg + '\n';
+      r.scrollTop = r.scrollHeight;
+    }
+
+    // ── Formulário ──
+    E.TAMANHOS.forEach(([w, h]) => $('tamanho').add(new Option(`${w} × ${h} mm`, `${w}x${h}`)));
+    $('tamanho').add(new Option('Personalizado…', 'outro'));
+
+    const padrao = { largura: 100, altura: 50, rotacao: 0, ajusteX: 0, ajusteY: 0, escuro: 0, comqr: true, ...E.EXEMPLO };
+    cfg = { ...padrao, ...cfg };
+    function preencher() {
+      const k = `${cfg.largura}x${cfg.altura}`;
+      $('tamanho').value = [...$('tamanho').options].some(o => o.value === k) ? k : 'outro';
+      $('largura').value = cfg.largura; $('altura').value = cfg.altura;
+      $('rotacao').value = cfg.rotacao; $('ajusteX').value = cfg.ajusteX; $('ajusteY').value = cfg.ajusteY;
+      $('escuro').value = cfg.escuro; $('comqr').checked = !!cfg.comqr;
+      for (const c of ['nome', 'empresa', 'cargo', 'categoria', 'codigo']) $('d-' + c).value = cfg[c] || '';
+    }
+    function ler() {
+      cfg.largura = Math.min(104, Math.max(20, Number($('largura').value) || 100));
+      cfg.altura = Math.min(300, Math.max(15, Number($('altura').value) || 50));
+      cfg.rotacao = Number($('rotacao').value) || 0;
+      cfg.ajusteX = Number($('ajusteX').value) || 0; cfg.ajusteY = Number($('ajusteY').value) || 0;
+      cfg.escuro = Number($('escuro').value) || 0; cfg.comqr = $('comqr').checked;
+      for (const c of ['nome', 'empresa', 'cargo', 'categoria', 'codigo']) cfg[c] = $('d-' + c).value;
+      salvar();
+    }
+    $('tamanho').addEventListener('change', () => {
+      const v = $('tamanho').value;
+      if (v !== 'outro') { const [w, h] = v.split('x').map(Number); $('largura').value = w; $('altura').value = h; }
+      atualizar();
+    });
+
+    // ── Etiqueta ──
+    let qrMatriz = null, qrTexto = '';
+    async function obterQr(texto) {
+      if (texto === qrTexto && qrMatriz) return qrMatriz;
+      const r = await fetch('/api/totem/qr?texto=' + encodeURIComponent(texto));
+      qrMatriz = r.ok ? await r.json() : null; qrTexto = texto;
+      return qrMatriz;
+    }
+    function modelo() {
+      const m = E.modeloPadrao(cfg.largura, cfg.altura, { comQr: cfg.comqr });
+      return { ...m, rotacao: cfg.rotacao, ajusteX: cfg.ajusteX, ajusteY: cfg.ajusteY, escurecimento: cfg.escuro };
+    }
+    async function dados() {
+      const d = { nome: cfg.nome, empresa: cfg.empresa, cargo: cfg.cargo, categoria: cfg.categoria, codigo: cfg.codigo, evento: 'Teste' };
+      if (cfg.comqr) d.qr_matriz = await obterQr(E.EXEMPLO.qr + '?c=' + (cfg.codigo || ''));
+      return d;
+    }
+    let etiquetaAtual = null;
+    let fila = Promise.resolve();
+    function atualizar() {
+      fila = fila.then(async () => {
+        ler();
+        const m = modelo();
+        etiquetaAtual = E.desenhar(m, await dados(), $('tela'));
+        $('legenda').textContent = `${cfg.largura} × ${cfg.altura} mm · ${etiquetaAtual.width} × ${etiquetaAtual.height} pontos (203 dpi)` + (cfg.rotacao ? ` · girada ${cfg.rotacao}°` : '');
+      }).catch(e => log('Erro ao desenhar: ' + e.message));
+      return fila;
+    }
+    document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', () => { clearTimeout(atualizar.t); atualizar.t = setTimeout(atualizar, 120); }));
+
+    // ── Impressora ──
+    function mostrarStatus() {
+      const s = $('status');
+      if (!E.usb.suportado()) {
+        s.className = 'status erro';
+        $('status-texto').textContent = !window.isSecureContext ? 'Abra esta página com https://' : 'Este navegador não permite USB. Use o Google Chrome.';
+      } else if (E.usb.conectada) {
+        s.className = 'status ok'; $('status-texto').textContent = 'Conectada: ' + E.usb.nome;
+      } else {
+        s.className = 'status'; $('status-texto').textContent = 'Nenhuma impressora conectada';
+      }
+      $('conectar').textContent = E.usb.conectada ? '🔄 Trocar impressora' : '🔌 Conectar impressora USB';
+      const d = E.usb.dispositivo;
+      $('diag').innerHTML = [
+        `Navegador com USB (WebUSB): <b>${navigator.usb ? 'sim' : 'não'}</b>`,
+        `Conexão segura (https): <b>${window.isSecureContext ? 'sim' : 'não'}</b>`,
+        d ? `Aparelho: <b>${(d.manufacturerName || '') + ' ' + (d.productName || '')}</b> (${d.vendorId.toString(16).padStart(4, '0')}:${d.productId.toString(16).padStart(4, '0')})` : '',
+      ].filter(Boolean).map(t => `<li>${t}</li>`).join('');
+    }
+
+    async function enviar(zpl, oque) {
+      try {
+        if (!E.usb.conectada) await E.usb.escolher();
+        mostrarStatus();
+        const t0 = performance.now();
+        await E.usb.enviar(zpl);
+        log(`${oque}: enviado (${(zpl.length / 1024).toFixed(0)} KB em ${Math.round(performance.now() - t0)} ms)`);
+      } catch (e) {
+        if (e.name === 'NotFoundError') log('Nenhuma impressora escolhida.');
+        else if (e.name === 'SecurityError' || /Access denied/i.test(e.message)) log('Acesso negado à impressora. No Windows o driver da Zebra “segura” a porta USB: use a impressão pela janela do navegador. No tablet, reconecte o cabo e tente de novo.');
+        else log('Erro: ' + e.message);
+        mostrarStatus();
+      }
+    }
+
+    $('conectar').addEventListener('click', async () => {
+      try { await E.usb.escolher(); log('Impressora conectada: ' + E.usb.nome); }
+      catch (e) { log(e.name === 'NotFoundError' ? 'Nenhuma impressora escolhida.' : 'Erro: ' + e.message); }
+      mostrarStatus();
+    });
+    $('imprimir').addEventListener('click', async () => {
+      await atualizar();
+      await enviar(E.paraZpl(etiquetaAtual, { escurecimento: cfg.escuro }), 'Etiqueta de teste');
+    });
+    $('calibracao').addEventListener('click', async () => {
+      ler();
+      await enviar(E.paraZpl(E.desenharCalibracao(modelo()), { escurecimento: cfg.escuro }), 'Calibração');
+    });
+    // ~JC: a impressora avança algumas etiquetas medindo o vão entre elas (faça ao trocar o rolo)
+    $('sensor').addEventListener('click', () => enviar('~JC', 'Calibração do sensor'));
+    $('navegador').addEventListener('click', async () => {
+      await atualizar();
+      log('Abrindo a janela de impressão do navegador…');
+      await E.imprimirNavegador(etiquetaAtual, modelo());
+    });
+
+    preencher();
+    atualizar();
+    E.usb.aoMudar(estado => { log('Impressora ' + estado + '.'); mostrarStatus(); });
+    E.usb.reconectar().then(dev => { if (dev) log('Impressora reconectada: ' + E.usb.nome); mostrarStatus(); });
+    mostrarStatus();
+  })();
+  </script>
+</body>
+</html>

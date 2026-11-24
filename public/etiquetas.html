@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Etiquetas e totem</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { background: var(--fundo); }
+    .barra { position: sticky; top: 0; z-index: 30; background: var(--azul-marca); color: #fff; display: flex; align-items: center; gap: 14px; padding: 10px 18px; flex-wrap: wrap; }
+    .barra img { height: 26px; }
+    .barra .titulo { flex: 1; min-width: 200px; }
+    .barra .titulo small { display: block; opacity: .7; font-size: 12px; }
+    .barra .titulo strong { font-size: 16px; }
+    .barra a.voltar { color: #fff; opacity: .8; text-decoration: none; font-weight: 600; font-size: 13px; }
+    .barra a.voltar:hover { opacity: 1; }
+    .pilula { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: rgba(255,255,255,.1); }
+    .pilula .ponto { width: 9px; height: 9px; border-radius: 50%; background: #97a6b8; }
+    .pilula.ok .ponto { background: #4ade80; }
+    .salvo { font-size: 12.5px; opacity: .8; min-width: 120px; text-align: right; }
+    .salvo.pendente { color: var(--laranja-claro); opacity: 1; font-weight: 600; }
+
+    .abas-et { display: flex; gap: 4px; padding: 0 18px; background: #fff; border-bottom: 1px solid var(--borda); position: sticky; top: 56px; z-index: 25; overflow-x: auto; }
+    .abas-et button { background: none; color: var(--texto-suave); border: 0; border-bottom: 3px solid transparent; border-radius: 0; height: 46px; padding: 0 16px; font-weight: 600; }
+    .abas-et button.ativa { color: var(--azul-marca); border-bottom-color: var(--laranja-escuro); }
+    .abas-et button:hover { filter: none; color: var(--texto); }
+    .aba { display: none; } .aba.ativa { display: block; }
+
+    .grade { display: grid; grid-template-columns: 300px minmax(0, 1fr) 320px; gap: 14px; padding: 14px 18px 40px; align-items: start; }
+    @media (max-width: 1250px) { .grade { grid-template-columns: 300px minmax(0, 1fr); } .col-dir { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } .col-dir .painel { margin: 0 !important; } }
+    @media (max-width: 820px) { .grade { grid-template-columns: 1fr; } .col-dir { grid-template-columns: 1fr; } }
+    .painel { padding: 16px; margin: 0 0 14px; }
+    .painel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--texto-suave); margin-bottom: 4px; }
+    .compacto label { margin: 10px 0 4px; font-size: 12.5px; }
+    .compacto input, .compacto select { height: 36px; font-size: 13.5px; padding: 0 10px; }
+    .compacto select { padding-right: 30px; }
+    .compacto input[type="checkbox"] { height: auto; width: auto; padding: 0; }
+    .col-dir, .col-esq, .col-centro { min-width: 0; }
+    .d2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .d3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .chave { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0 0; cursor: pointer; font-size: 13.5px; color: var(--texto); font-weight: 500; }
+    .chave input { margin-top: 3px; width: 17px; height: 17px; flex: none; }
+    .chave small { display: block; color: var(--texto-suave); font-weight: 400; font-size: 12px; }
+
+    .palco-et { background: repeating-conic-gradient(#e9eef4 0 25%, #f6f8fb 0 50%) 0 0 / 18px 18px; border-radius: 12px; padding: 28px; display: flex; justify-content: center; align-items: center; min-height: 360px; overflow: auto; }
+    .folha { position: relative; box-shadow: 0 8px 26px rgba(0,32,66,.2); background: #fff; touch-action: none; user-select: none; }
+    .folha canvas { display: block; width: 100%; height: 100%; image-rendering: auto; }
+    .caixa-el { position: absolute; border: 1px dashed rgba(232,78,39,.0); cursor: move; }
+    .folha:hover .caixa-el { border-color: rgba(11,52,99,.25); }
+    .caixa-el.sel { border: 1.5px solid var(--laranja-escuro) !important; background: rgba(247,173,64,.08); }
+    .caixa-el .alca { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; background: var(--laranja-escuro); border: 2px solid #fff; border-radius: 3px; cursor: nwse-resize; display: none; }
+    .caixa-el.sel .alca { display: block; }
+    .caixa-el .rot { position: absolute; left: 0; top: -19px; font-size: 10.5px; background: var(--laranja-escuro); color: #fff; padding: 1px 6px; border-radius: 4px; white-space: nowrap; display: none; font-weight: 600; }
+    .caixa-el.sel .rot { display: block; }
+    .info-palco { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: var(--texto-suave); margin-top: 10px; }
+    .info-palco select { height: 34px; width: auto; min-width: 240px; font-size: 13px; }
+    .ferramentas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .ferramentas .botao-mini { height: 32px; }
+
+    .lista-el { list-style: none; padding: 0; margin: 8px 0 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .lista-el li { min-width: 0; display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--borda); background: #fff; font-size: 13px; cursor: pointer; }
+    .lista-el li.sel { border-color: var(--laranja-escuro); background: #fff7ec; }
+    .lista-el li .nome-el { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lista-el li.oculto-el .nome-el { opacity: .45; text-decoration: line-through; }
+    .lista-el li button { height: 26px; width: 26px; padding: 0; background: transparent; color: var(--texto-suave); font-size: 14px; border-radius: 6px; }
+    .lista-el li button:hover { background: var(--neutro-100); filter: none; color: var(--texto); }
+    .vazio-props { color: var(--texto-suave); font-size: 13px; padding: 10px 0; }
+    .cats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .cats label { margin: 0; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--borda-forte); border-radius: 999px; padding: 4px 10px; font-size: 12px; color: var(--texto); cursor: pointer; }
+
+    .acoes-impr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .acoes-impr button { height: 38px; font-size: 13px; }
+    .acoes-impr .largo { grid-column: 1 / -1; }
+    .registro-et { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: var(--texto-suave); margin-top: 8px; max-height: 90px; overflow: auto; white-space: pre-wrap; }
+
+    /* Lote / categorias */
+    .filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+    .filtros > div { flex: 1 1 170px; }
+    .filtros label { margin-top: 0; }
+    .tabela-et { width: 100%; border-collapse: collapse; font-size: 13.5px; background: #fff; }
+    .tabela-et th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--texto-suave); padding: 9px 10px; border-bottom: 1px solid var(--borda); position: sticky; top: 0; background: #fff; }
+    .tabela-et td { padding: 8px 10px; border-bottom: 1px solid var(--borda); }
+    .tabela-et tr.grupo td { background: var(--neutro-50); font-weight: 700; color: var(--azul-marca); }
+    .rolagem-tabela { max-height: 60vh; overflow: auto; border: 1px solid var(--borda); border-radius: 10px; margin-top: 12px; }
+    .barra-lote { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .barra-lote .cont { font-weight: 600; flex: 1; }
+    .progresso { height: 8px; background: var(--neutro-200); border-radius: 99px; overflow: hidden; margin-top: 10px; display: none; }
+    .progresso div { height: 100%; width: 0; background: var(--grad-marca); transition: width .2s; }
+    .etq-cat { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--neutro-100); color: var(--neutro-700); }
+    .lote-previa { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+    .lote-previa canvas { max-width: 280px; height: auto; box-shadow: 0 4px 14px rgba(0,32,66,.15); background: #fff; }
+
+    /* Totem */
+    .grade-totem { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; padding: 14px 18px 40px; }
+    @media (max-width: 900px) { .grade-totem { grid-template-columns: 1fr; } }
+    .link-caixa { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .link-caixa input { flex: 1 1 260px; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+    .passos { padding-left: 18px; color: var(--texto-suave); font-size: 13.5px; line-height: 1.6; }
+    .passos b { color: var(--texto); }
+    kbd { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; background: var(--neutro-100); border: 1px solid var(--borda-forte); border-radius: 4px; padding: 0 5px; }
+  </style>
+</head>
+<body>
+  <div class="barra">
+    <img src="/logo-branco.png" alt="">
+    <div class="titulo"><small>Etiquetas de crachá e totem</small><strong id="nome-evento">Carregando…</strong></div>
+    <span class="pilula" id="pilula-impressora"><span class="ponto"></span><span id="txt-impressora">Impressora</span></span>
+    <button class="botao-mini botao-claro" id="btn-impressora" style="height:32px">Conectar impressora</button>
+    <span class="salvo" id="estado-salvo"></span>
+    <button class="botao-ouro botao-mini" id="btn-salvar" style="height:34px">Salvar</button>
+    <a class="voltar" href="/admin.html">← Painel</a>
+  </div>
+
+  <nav class="abas-et" id="abas">
+    <button class="ativa" data-aba="editor">✏️ Modelo da etiqueta</button>
+    <button data-aba="lote">🖨️ Imprimir etiquetas</button>
+    <button data-aba="categorias">🏷️ Categorias</button>
+    <button data-aba="totem">📱 Totem de autocredenciamento</button>
+  </nav>
+
+  <!-- ═══ EDITOR ═══ -->
+  <section class="aba ativa" id="aba-editor">
+    <div class="grade">
+      <div class="col-esq">
+        <div class="painel compacto">
+          <h2>Este evento</h2>
+          <label class="chave"><input type="checkbox" id="cfg-imprime"><span>Usa etiqueta de crachá<small>Desligado: o totem só faz o check-in (ideal para jantares).</small></span></label>
+          <label class="chave"><input type="checkbox" id="cfg-automatica"><span>Imprimir automaticamente no totem<small>A etiqueta sai assim que o convidado confirma.</small></span></label>
+          <label for="cfg-qr">O QR code da etiqueta leva</label>
+          <select id="cfg-qr"><option value="link">O link do convite (abre no celular)</option><option value="codigo">Só o código de 6 dígitos</option></select>
+          <div class="d2">
+            <div><label for="cfg-categoria">Categoria padrão</label><input id="cfg-categoria" placeholder="CONVIDADO"></div>
+            <div><label for="cfg-reimp">Reimpressões no totem</label><input id="cfg-reimp" type="number" min="0" max="10"></div>
+          </div>
+        </div>
+
+        <div class="painel compacto">
+          <h2>Tamanho e impressão</h2>
+          <label for="pg-tamanho">Tamanho da etiqueta</label>
+          <select id="pg-tamanho"></select>
+          <div class="d2">
+            <div><label for="pg-largura">Largura (mm)</label><input id="pg-largura" type="number" min="15" max="104" step="1"></div>
+            <div><label for="pg-altura">Altura (mm)</label><input id="pg-altura" type="number" min="10" max="300" step="1"></div>
+          </div>
+          <div class="d3">
+            <div><label for="pg-rotacao">Rotação</label><select id="pg-rotacao"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
+            <div><label for="pg-ax">Ajuste X</label><input id="pg-ax" type="number" step="0.5" title="mm"></div>
+            <div><label for="pg-ay">Ajuste Y</label><input id="pg-ay" type="number" step="0.5" title="mm"></div>
+          </div>
+          <div class="d2">
+            <div><label for="pg-escuro">Escurecimento</label><input id="pg-escuro" type="number" min="-30" max="30" step="1"></div>
+            <div><label for="pg-fonte">Fonte</label><select id="pg-fonte"></select></div>
+          </div>
+        </div>
+
+        <div class="painel compacto">
+          <h2>Modelos salvos</h2>
+          <label for="mod-lista">Biblioteca (todos os eventos)</label>
+          <select id="mod-lista"></select>
+          <div class="d2" style="margin-top:8px">
+            <button class="botao-claro botao-mini" id="mod-aplicar">Usar este modelo</button>
+            <button class="botao-claro botao-mini" id="mod-excluir">Excluir</button>
+          </div>
+          <div class="d2" style="margin-top:8px">
+            <button class="botao-claro botao-mini" id="mod-salvar">Salvar como modelo</button>
+            <button class="botao-claro botao-mini" id="mod-padrao">Recomeçar do padrão</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-centro">
+        <div class="painel">
+          <div class="ferramentas">
+            <button class="botao-claro botao-mini" data-add="campo">＋ Campo</button>
+            <button class="botao-claro botao-mini" data-add="texto">＋ Texto fixo</button>
+            <button class="botao-claro botao-mini" data-add="qrcode">＋ QR code</button>
+            <button class="botao-claro botao-mini" data-add="codigobarras">＋ Código de barras</button>
+            <button class="botao-claro botao-mini" data-add="caixa">＋ Moldura</button>
+            <span style="flex:1"></span>
+            <button class="botao-claro botao-mini" id="desfazer" title="Desfazer (Ctrl+Z)">↶</button>
+            <button class="botao-claro botao-mini" id="refazer" title="Refazer (Ctrl+Y)">↷</button>
+          </div>
+          <div class="palco-et" id="palco"><div class="folha" id="folha"><canvas id="tela"></canvas></div></div>
+          <div class="info-palco">
+            <span id="info-medidas"></span>
+            <select id="amostra"><option value="">Pré-visualizar com: dados de exemplo</option></select>
+          </div>
+          <div class="info-palco"><span>Arraste para mover · alça laranja para redimensionar · setas movem 0,5 mm (<kbd>Shift</kbd> = 2 mm) · <kbd>Del</kbd> remove</span></div>
+        </div>
+      </div>
+
+      <div class="col-dir">
+        <div class="painel compacto">
+          <h2>Elementos</h2>
+          <ul class="lista-el" id="lista-el"></ul>
+        </div>
+        <div class="painel compacto">
+          <h2>Propriedades</h2>
+          <div id="props"><p class="vazio-props">Clique num elemento da etiqueta para editar.</p></div>
+        </div>
+        <div class="painel compacto">
+          <h2>Testar na impressora</h2>
+          <div class="acoes-impr">
+            <button class="botao-ouro largo" id="t-imprimir">Imprimir esta etiqueta</button>
+            <button class="botao-claro" id="t-calib">Calibração</button>
+            <button class="botao-claro" id="t-sensor">Calibrar sensor</button>
+            <button class="botao-claro largo" id="t-navegador">Pela janela do navegador</button>
+          </div>
+          <div class="registro-et" id="registro"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ LOTE ═══ -->
+  <section class="aba" id="aba-lote">
+    <div style="padding:14px 18px 40px">
+      <div class="painel">
+        <h2>Imprimir etiquetas em lote</h2>
+        <p>Para pré-imprimir crachás antes do evento ou reimprimir um grupo. Usa o modelo da aba “Modelo da etiqueta”.</p>
+        <div class="filtros compacto">
+          <div><label for="l-busca">Buscar</label><input id="l-busca" placeholder="Nome, empresa ou código"></div>
+          <div><label for="l-empresa">Empresa</label><select id="l-empresa"></select></div>
+          <div><label for="l-situacao">Situação</label><select id="l-situacao">
+            <option value="todos">Todos (menos cancelados)</option><option value="confirmados">Confirmados</option>
+            <option value="presentes">Já fizeram check-in</option><option value="nao_impressos">Sem etiqueta impressa</option></select></div>
+          <div><label for="l-categoria">Categoria</label><select id="l-categoria"></select></div>
+        </div>
+        <div class="barra-lote">
+          <label class="chave" style="margin:0"><input type="checkbox" id="l-todos"> <span>Marcar todos da lista</span></label>
+          <span class="cont" id="l-cont"></span>
+          <button class="botao-claro" id="l-navegador">Pela janela do navegador</button>
+          <button class="botao-ouro" id="l-imprimir">🖨️ Imprimir selecionadas</button>
+        </div>
+        <div class="progresso" id="l-prog"><div></div></div>
+        <div class="rolagem-tabela"><table class="tabela-et" id="l-tabela"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CATEGORIAS ═══ -->
+  <section class="aba" id="aba-categorias">
+    <div style="padding:14px 18px 40px">
+      <div class="painel">
+        <h2>Categorias dos convidados</h2>
+        <p>A categoria aparece na etiqueta (VISITANTE, PALESTRANTE, IMPRENSA, STAFF…) e pode mostrar ou esconder elementos do modelo.
+           Quem não tem categoria usa a categoria padrão do evento.</p>
+        <div class="filtros compacto">
+          <div><label for="c-busca">Buscar</label><input id="c-busca" placeholder="Nome, empresa ou código"></div>
+          <div><label for="c-empresa">Empresa</label><select id="c-empresa"></select></div>
+          <div><label for="c-filtro">Categoria atual</label><select id="c-filtro"></select></div>
+        </div>
+        <div class="barra-lote">
+          <label class="chave" style="margin:0"><input type="checkbox" id="c-todos"> <span>Marcar todos da lista</span></label>
+          <span class="cont" id="c-cont"></span>
+          <input id="c-nova" list="c-sugestoes" placeholder="Nova categoria (ex.: PALESTRANTE)" style="max-width:260px;height:42px">
+          <datalist id="c-sugestoes"></datalist>
+          <button class="botao-ouro" id="c-aplicar">Aplicar aos selecionados</button>
+          <button class="botao-claro" id="c-limpar">Voltar ao padrão</button>
+        </div>
+        <div class="rolagem-tabela"><table class="tabela-et" id="c-tabela"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ TOTEM ═══ -->
+  <section class="aba" id="aba-totem">
+    <div class="grade-totem">
+      <div class="painel compacto">
+        <h2>Link do totem</h2>
+        <p>Abra este link no tablet do totem. Ele funciona <b>sem login</b> e só faz o autocredenciamento deste evento:
+          o convidado aproxima o QR code do convite (ou digita o código de 6 dígitos), confirma o nome e, se o evento usa etiqueta, ela sai na impressora.</p>
+        <div id="totem-area"></div>
+        <label for="cfg-titulo">Mensagem de boas-vindas (opcional)</label>
+        <input id="cfg-titulo" placeholder="Ex.: Bem-vindo ao Congresso 2027!">
+      </div>
+      <div class="painel">
+        <h2>Montando o totem</h2>
+        <ol class="passos">
+          <li>Ligue a impressora Zebra no tablet com um <b>adaptador USB OTG</b> (USB-C → USB-A).</li>
+          <li>Abra o link do totem no <b>Google Chrome</b> do tablet.</li>
+          <li>Toque em <b>Conectar impressora</b> uma vez (a escolha fica salva no tablet).</li>
+          <li>Coloque o Chrome em tela cheia e fixe a tela (Android: <b>Configurações → Segurança → Fixar app</b>) para o convidado não sair do totem.</li>
+          <li>Deixe o tablet na tomada e com a tela sempre ligada (o totem pede isso ao navegador).</li>
+        </ol>
+        <p style="font-size:13px;color:var(--texto-suave)">Sem impressora (jantares): desligue “Usa etiqueta de crachá” — o totem só faz o check-in.</p>
+      </div>
+    </div>
+  </section>
+
+  <script src="/js/comum.js"></script>
+  <script src="/js/etiqueta.js"></script>
+  <script src="/js/etiquetas-editor.js"></script>
+</body>
+</html>

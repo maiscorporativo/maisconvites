@@ -1211,7 +1211,25 @@ async function fazerCheckin(token) {
 }
 
 // ── Link da lista de credenciamento (equipe externa, sem login) ──
+// Etiquetas de crachá + totem (página própria)
+document.getElementById('btn-etiquetas')?.addEventListener('click', () => {
+  if (estado.eventoId) window.open('/etiquetas.html?evento=' + estado.eventoId, '_blank');
+});
+async function carregarResumoEtiquetas() {
+  const el = document.getElementById('resumo-etiquetas');
+  if (!el || !estado.eventoId) return;
+  try {
+    const r = await api(`/api/admin/eventos/${estado.eventoId}/etiqueta`);
+    el.textContent = [
+      r.config.imprime ? 'Este evento usa etiqueta de crachá' : 'Sem etiqueta de crachá',
+      r.totem.ativo ? 'totem ativo' : 'totem desativado',
+      r.config.imprime ? `${r.etiquetas_impressas} etiqueta(s) impressa(s)` : '',
+    ].filter(Boolean).join(' · ');
+  } catch { el.textContent = ''; }
+}
+
 async function carregarLinkCredenciamento() {
+  carregarResumoEtiquetas();
   const area = document.getElementById('cred-link-area');
   if (!area || !estado.eventoId) return;
   try {

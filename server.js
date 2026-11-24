@@ -27,9 +27,11 @@ app.use(session({
 app.use('/api', require('./src/rotas/autenticacao'));
 app.use('/api/admin', require('./src/rotas/admin'));
 app.use('/api/admin', require('./src/rotas/mensagens'));
+app.use('/api/admin', require('./src/rotas/etiquetas-admin')); // etiquetas de crachá + link do totem
 app.use('/api/empresa', require('./src/rotas/empresa'));
 app.use('/', require('./src/rotas/publico'));
 app.use('/', require('./src/rotas/credenciamento')); // lista da recepção externa (link secreto, sem login)
+app.use('/', require('./src/rotas/totem')); // totem de autocredenciamento / impressão de etiquetas
 
 app.use(express.static(path.join(__dirname, 'public')));
 

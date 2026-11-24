@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#002042">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Credenciamento</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root {
+      --azul: #002042; --azul-2: #0b3463; --laranja: #f7ad40; --laranja-escuro: #e84e27;
+      --grad: linear-gradient(135deg, var(--laranja) 0%, var(--laranja-escuro) 100%);
+      --ok: #16a34a; --erro: #e84e27;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body { font-family: 'Inter', system-ui, Arial, sans-serif; background: radial-gradient(1200px 700px at 80% -10%, #0b3463 0%, #002042 55%, #001428 100%); color: #fff; -webkit-font-smoothing: antialiased; user-select: none; }
+    button { font: inherit; border: 0; cursor: pointer; }
+    .tela { position: fixed; inset: 0; display: none; flex-direction: column; padding: max(18px, env(safe-area-inset-top)) 28px 22px; }
+    .tela.ativa { display: flex; animation: entra .35s ease; }
+    @keyframes entra { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+    .topo { display: flex; align-items: center; gap: 14px; }
+    .topo img { height: 34px; }
+    .topo .ev { flex: 1; min-width: 0; }
+    .topo .ev b { display: block; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .topo .ev small { opacity: .65; font-size: 13px; }
+    .ind { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 6px 11px; border-radius: 99px; background: rgba(255,255,255,.08); white-space: nowrap; }
+    .ind i { width: 9px; height: 9px; border-radius: 50%; background: #97a6b8; }
+    .ind.ok i { background: #4ade80; } .ind.erro i { background: var(--erro); }
+
+    /* Início */
+    .inicio-corpo { flex: 1; display: grid; grid-template-columns: 1.05fr 1fr; gap: 28px; align-items: center; min-height: 0; }
+    .boas h1 { font-size: clamp(30px, 4.6vw, 52px); line-height: 1.05; margin: 0 0 14px; letter-spacing: -0.03em; }
+    .boas h1 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .boas p { font-size: clamp(16px, 2vw, 21px); opacity: .85; margin: 0 0 26px; line-height: 1.45; }
+    .passos-t { display: grid; gap: 12px; margin-bottom: 26px; }
+    .passos-t div { display: flex; align-items: center; gap: 14px; font-size: clamp(15px, 1.8vw, 19px); opacity: .92; }
+    .passos-t b { flex: none; width: 34px; height: 34px; border-radius: 50%; background: rgba(247,173,64,.16); color: var(--laranja); display: grid; place-items: center; font-size: 16px; }
+    .btn-codigo { background: rgba(255,255,255,.1); color: #fff; border: 1.5px solid rgba(255,255,255,.25); padding: 18px 26px; border-radius: 16px; font-size: 19px; font-weight: 700; }
+    .btn-codigo:active { background: rgba(255,255,255,.18); }
+    .camera { position: relative; aspect-ratio: 1; width: min(100%, 62vh); justify-self: center; border-radius: 28px; overflow: hidden; background: #000; box-shadow: 0 20px 60px rgba(0,0,0,.45), 0 0 0 3px rgba(247,173,64,.35); }
+    .camera video { width: 100%; height: 100%; object-fit: cover; }
+    .camera.espelho video { transform: scaleX(-1); }
+    .mira { position: absolute; inset: 16%; border-radius: 18px; box-shadow: 0 0 0 9999px rgba(0,10,25,.35); }
+    .mira::before, .mira::after { content: ''; position: absolute; inset: 0; border-radius: 18px; border: 4px solid transparent; }
+    .mira::before { border-color: var(--laranja) transparent var(--laranja) transparent; clip-path: polygon(0 0, 22% 0, 22% 100%, 0 100%, 0 0, 100% 0, 100% 100%, 78% 100%, 78% 0); }
+    .linha-scan { position: absolute; left: 18%; right: 18%; height: 3px; background: var(--grad); border-radius: 3px; box-shadow: 0 0 18px var(--laranja); animation: scan 2.2s ease-in-out infinite; }
+    @keyframes scan { 0%, 100% { top: 20%; } 50% { top: 78%; } }
+    .camera .aviso-cam { position: absolute; inset: 0; display: none; place-items: center; text-align: center; padding: 30px; font-size: 16px; background: #0b1b30; }
+    .camera.sem-camera .aviso-cam { display: grid; }
+    .rodape { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: .6; margin-top: 10px; }
+
+    /* Código */
+    .codigo-corpo { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+    .codigo-corpo h2 { margin: 0; font-size: clamp(22px, 3vw, 32px); }
+    .digitos { display: flex; gap: 10px; }
+    .digitos span { width: clamp(44px, 6.5vw, 64px); height: clamp(58px, 8vw, 78px); border-radius: 14px; background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.18); display: grid; place-items: center; font-size: clamp(28px, 4vw, 40px); font-weight: 800; }
+    .digitos span.cheio { border-color: var(--laranja); }
+    .teclado { display: grid; grid-template-columns: repeat(3, clamp(72px, 10vw, 104px)); gap: 10px; }
+    .teclado button { height: clamp(56px, 8.5vh, 74px); border-radius: 16px; background: rgba(255,255,255,.1); color: #fff; font-size: 28px; font-weight: 700; }
+    .teclado button:active { background: rgba(255,255,255,.22); transform: scale(.97); }
+    .teclado .ok { background: var(--grad); color: #2b1a05; font-size: 20px; }
+    .teclado .ok:disabled { opacity: .35; }
+    .voltar { position: absolute; left: 24px; bottom: 22px; background: none; color: #fff; opacity: .75; font-size: 17px; font-weight: 600; padding: 12px; }
+
+    /* Confirmação / resultado */
+    .centro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; padding: 0 20px; }
+    .ola { font-size: clamp(20px, 2.6vw, 28px); opacity: .8; }
+    .nome-grande { font-size: clamp(34px, 5.4vw, 64px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; max-width: 92vw; }
+    .empresa-grande { font-size: clamp(18px, 2.5vw, 28px); color: var(--laranja); font-weight: 700; }
+    .pergunta { font-size: clamp(18px, 2.2vw, 24px); opacity: .85; margin-top: 18px; }
+    .botoes { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+    .b-sim { background: var(--grad); color: #2b1a05; font-weight: 800; font-size: clamp(20px, 2.6vw, 26px); padding: 22px 46px; border-radius: 20px; box-shadow: 0 10px 30px rgba(232,78,39,.35); }
+    .b-nao { background: rgba(255,255,255,.1); color: #fff; font-weight: 700; font-size: clamp(18px, 2.2vw, 22px); padding: 22px 34px; border-radius: 20px; border: 1.5px solid rgba(255,255,255,.22); }
+    .b-sim:active, .b-nao:active { transform: scale(.97); }
+    .selo-ok { width: 118px; height: 118px; border-radius: 50%; background: rgba(22,163,74,.16); display: grid; place-items: center; margin-bottom: 6px; animation: pulo .5s ease; }
+    .selo-ok svg { width: 66px; height: 66px; stroke: #4ade80; stroke-width: 3.2; fill: none; stroke-dasharray: 60; stroke-dashoffset: 60; animation: traco .6s .15s ease forwards; }
+    .selo-erro { background: rgba(232,78,39,.16); } .selo-erro svg { stroke: #ff8a65; }
+    @keyframes traco { to { stroke-dashoffset: 0; } }
+    @keyframes pulo { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+    .msg-grande { font-size: clamp(26px, 3.8vw, 44px); font-weight: 800; letter-spacing: -0.02em; }
+    .msg-sub { font-size: clamp(17px, 2.1vw, 23px); opacity: .85; max-width: 780px; line-height: 1.45; }
+    .imprimindo { display: inline-flex; align-items: center; gap: 12px; font-size: 19px; font-weight: 600; padding: 12px 20px; border-radius: 14px; background: rgba(255,255,255,.08); margin-top: 8px; }
+    .roda { width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(255,255,255,.25); border-top-color: var(--laranja); animation: gira .8s linear infinite; }
+    @keyframes gira { to { transform: rotate(360deg); } }
+    .contagem { position: absolute; bottom: 22px; left: 0; right: 0; text-align: center; font-size: 14px; opacity: .55; }
+    .barra-tempo { position: absolute; left: 0; bottom: 0; height: 5px; background: var(--grad); width: 100%; transform-origin: left; }
+
+    /* Preparação (equipe) */
+    .prep { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
+    .prep h1 { margin: 0; font-size: clamp(26px, 3.4vw, 38px); }
+    .prep p { margin: 0; opacity: .75; font-size: 16px; max-width: 640px; }
+    .cartao-prep { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 18px; padding: 18px 20px; width: min(640px, 92vw); text-align: left; display: grid; gap: 12px; }
+    .linha-prep { display: flex; align-items: center; gap: 12px; justify-content: space-between; flex-wrap: wrap; }
+    .linha-prep .rot { font-weight: 600; }
+    .linha-prep small { display: block; opacity: .65; font-weight: 400; }
+    .bp { background: rgba(255,255,255,.12); color: #fff; padding: 12px 18px; border-radius: 12px; font-weight: 700; font-size: 15px; }
+    .bp.prim { background: var(--grad); color: #2b1a05; font-size: 20px; padding: 18px 40px; border-radius: 16px; }
+    select.bp { appearance: none; padding-right: 18px; }
+    select.bp option { color: #000; }
+    .erro-total { color: #ffb4a0; font-size: 17px; }
+  </style>
+</head>
+<body>
+  <!-- Preparação (equipe monta o totem) -->
+  <section class="tela ativa" id="t-prep">
+    <div class="topo"><img src="/logo-branco.png" alt=""><div class="ev"><b id="prep-evento">Carregando…</b><small>Totem de autocredenciamento</small></div></div>
+    <div class="prep">
+      <h1>Preparar o totem</h1>
+      <p id="prep-texto">Confira a câmera e a impressora e toque em <b>Iniciar totem</b>. Para voltar a esta tela depois, toque 5 vezes seguidas no logotipo.</p>
+      <div class="cartao-prep">
+        <div class="linha-prep"><span class="rot">Câmera<small id="cam-info">—</small></span><select class="bp" id="sel-camera"></select></div>
+        <div class="linha-prep" id="linha-impressora"><span class="rot">Impressora de etiquetas<small id="imp-info">—</small></span>
+          <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="bp" id="btn-imp">Conectar</button><button class="bp" id="btn-teste">Teste</button></span></div>
+      </div>
+      <button class="bp prim" id="btn-iniciar" disabled>Iniciar totem</button>
+      <div class="erro-total" id="prep-erro"></div>
+    </div>
+  </section>
+
+  <!-- Início: leitura do QR code -->
+  <section class="tela" id="t-inicio">
+    <div class="topo"><img src="/logo-branco.png" alt="" id="logo"><div class="ev"><b id="ev-nome"></b><small id="ev-info"></small></div>
+      <span class="ind" id="ind-imp" style="display:none"><i></i><span>Impressora</span></span></div>
+    <div class="inicio-corpo">
+      <div class="boas">
+        <h1 id="titulo-boas">Faça seu <span>credenciamento</span></h1>
+        <p>É rápido: aproxime o QR code do seu convite da câmera.</p>
+        <div class="passos-t">
+          <div><b>1</b>Abra o convite no celular (e-mail ou WhatsApp)</div>
+          <div><b>2</b>Mostre o QR code para a câmera</div>
+          <div><b>3</b><span>Confirme seu nome<span id="passo-etiqueta"> e retire sua etiqueta</span></span></div>
+        </div>
+        <button class="btn-codigo" id="btn-codigo">⌨️ Digitar o código do convite</button>
+      </div>
+      <div class="camera" id="camera"><video id="video" playsinline muted autoplay></video><div class="mira"></div><div class="linha-scan"></div>
+        <div class="aviso-cam" id="aviso-cam">Câmera indisponível.<br>Use “Digitar o código do convite”.</div></div>
+    </div>
+    <div class="rodape"><span id="contador"></span><span>Dúvidas? Procure a recepção.</span></div>
+  </section>
+
+  <!-- Digitar código -->
+  <section class="tela" id="t-codigo">
+    <div class="codigo-corpo">
+      <h2>Digite o código de 6 dígitos do seu convite</h2>
+      <div class="digitos" id="digitos"></div>
+      <div class="teclado" id="teclado"></div>
+    </div>
+    <button class="voltar" data-voltar>← Voltar</button>
+  </section>
+
+  <!-- Confirmação -->
+  <section class="tela" id="t-confirmar">
+    <div class="centro">
+      <div class="ola" id="c-ola">Olá!</div>
+      <div class="nome-grande" id="c-nome"></div>
+      <div class="empresa-grande" id="c-empresa"></div>
+      <div class="pergunta" id="c-pergunta">É você?</div>
+      <div class="botoes" id="c-botoes"></div>
+    </div>
+    <div class="barra-tempo" id="c-tempo"></div>
+  </section>
+
+  <!-- Resultado -->
+  <section class="tela" id="t-resultado">
+    <div class="centro">
+      <div class="selo-ok" id="r-selo"><svg viewBox="0 0 52 52"><path id="r-icone" d="M14 27l8 8 16-18"/></svg></div>
+      <div class="msg-grande" id="r-titulo"></div>
+      <div class="msg-sub" id="r-sub"></div>
+      <div id="r-extra"></div>
+    </div>
+    <div class="contagem" id="r-contagem"></div>
+  </section>
+
+  <script src="/js/jsqr.min.js"></script>
+  <script src="/js/etiqueta.js"></script>
+  <script>
+  (function () {
+    const $ = id => document.getElementById(id);
+    const E = window.Etiqueta;
+    const TOKEN = location.pathname.split('/').filter(Boolean).pop();
+    const API = '/api/totem/' + encodeURIComponent(TOKEN);
+    const PREF = 'totem-preferencias';
+    let pref = {}; try { pref = JSON.parse(localStorage.getItem(PREF) || '{}'); } catch {}
+    const guardarPref = () => { try { localStorage.setItem(PREF, JSON.stringify(pref)); } catch {} };
+    let conf = null;          // evento + etiqueta
+    let atual = null;         // resultado da identificação
+    let lendo = false, ocupado = false, stream = null, detector = null, temporizador = null;
+
+    // ── Telas ──
+    function mostrar(id) {
+      document.querySelectorAll('.tela').forEach(t => t.classList.toggle('ativa', t.id === id));
+      lendo = id === 't-inicio';
+      if (lendo) { ocupado = false; loopLeitura(); }
+    }
+    function voltarInicio() { clearTimeout(temporizador); atual = null; codigo = ''; desenharCodigo(); mostrar('t-inicio'); atualizarContador(); }
+    document.querySelectorAll('[data-voltar]').forEach(b => b.addEventListener('click', voltarInicio));
+
+    // ── Som de confirmação ──
+    let audio;
+    function bip(ok = true) {
+      try {
+        audio ||= new (window.AudioContext || window.webkitAudioContext)();
+        const o = audio.createOscillator(), g = audio.createGain();
+        o.type = 'sine'; o.frequency.value = ok ? 880 : 300; g.gain.value = 0.08;
+        o.connect(g); g.connect(audio.destination); o.start();
+        if (ok) o.frequency.setValueAtTime(1320, audio.currentTime + 0.09);
+        o.stop(audio.currentTime + (ok ? 0.2 : 0.35));
+      } catch {}
+    }
+
+    async function chamar(caminho, corpo) {
+      const r = await fetch(API + caminho, { method: corpo ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json' }, body: corpo ? JSON.stringify(corpo) : undefined, cache: 'no-store' });
+      let d = {}; try { d = await r.json(); } catch {}
+      if (!r.ok) { const e = new Error(d.erro || 'Falha na comunicação. Tente de novo.'); e.status = r.status; throw e; }
+      return d;
+    }
+
+    // ── Preparação ──
+    async function iniciarPreparacao() {
+      try { conf = await chamar(''); }
+      catch (e) { $('prep-evento').textContent = 'Totem indisponível'; $('prep-erro').textContent = e.message; return; }
+      $('prep-evento').textContent = conf.evento.nome;
+      $('ev-nome').textContent = conf.evento.nome;
+      const dataEv = conf.evento.data_evento ? conf.evento.data_evento.split('-').reverse().join('/') : '';
+      $('ev-info').textContent = [dataEv, conf.evento.hora_evento, conf.evento.local_nome].filter(Boolean).join(' · ');
+      if (conf.titulo) $('titulo-boas').textContent = conf.titulo;
+      const imprime = conf.etiqueta.imprime;
+      $('linha-impressora').style.display = imprime ? '' : 'none';
+      $('ind-imp').style.display = imprime ? '' : 'none';
+      $('passo-etiqueta').style.display = imprime ? '' : 'none';
+      await listarCameras();
+      if (imprime) { await E.usb.reconectar(); E.usb.aoMudar(statusImpressora); }
+      statusImpressora();
+      $('btn-iniciar').disabled = false;
+    }
+    function statusImpressora() {
+      if (!conf?.etiqueta.imprime) return;
+      const ok = E.usb.conectada;
+      $('imp-info').textContent = ok ? 'Conectada: ' + E.usb.nome : (E.usb.suportado() ? 'Nenhuma impressora conectada' : 'Este navegador não permite USB — use o Chrome');
+      $('btn-imp').textContent = ok ? 'Trocar' : 'Conectar';
+      $('ind-imp').className = 'ind ' + (ok ? 'ok' : 'erro');
+      $('ind-imp').lastElementChild.textContent = ok ? 'Impressora pronta' : 'Impressora desconectada';
+    }
+    $('btn-imp').addEventListener('click', async () => {
+      try { await E.usb.escolher(); } catch (e) { if (e.name !== 'NotFoundError') $('prep-erro').textContent = e.message; }
+      statusImpressora();
+    });
+    $('btn-teste').addEventListener('click', async () => {
+      $('prep-erro').textContent = '';
+      try {
+        const m = E.normalizar(conf.etiqueta.modelo || E.modeloPadrao(100, 50));
+        const qr = await (await fetch('/api/totem/qr?texto=teste')).json();
+        if (!E.usb.conectada) await E.usb.escolher();
+        await E.usb.enviar(E.paraZpl(E.desenhar(m, { ...E.EXEMPLO, nome: 'Teste do Totem', qr_matriz: qr, evento: conf.evento.nome }), { escurecimento: m.escurecimento }));
+        statusImpressora();
+      } catch (e) { if (e.name !== 'NotFoundError') $('prep-erro').textContent = 'Falha no teste: ' + e.message; }
+    });
+
+    async function listarCameras() {
+      const sel = $('sel-camera');
+      try {
+        // Pede permissão uma vez para conseguir os nomes das câmeras
+        const s = await navigator.mediaDevices.getUserMedia({ video: true }); s.getTracks().forEach(t => t.stop());
+        const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+        sel.innerHTML = cams.map((c, i) => `<option value="${c.deviceId}">${c.label || 'Câmera ' + (i + 1)}</option>`).join('');
+        const frontal = cams.find(c => /front|frontal|user/i.test(c.label));
+        sel.value = cams.some(c => c.deviceId === pref.camera) ? pref.camera : (frontal || cams[0] || {}).deviceId || '';
+        $('cam-info').textContent = cams.length ? 'A câmera da frente costuma ser a melhor no totem' : 'Nenhuma câmera encontrada';
+      } catch {
+        sel.innerHTML = '<option value="">Sem acesso à câmera</option>';
+        $('cam-info').textContent = 'Permita o acesso à câmera no navegador (o código de 6 dígitos funciona sem câmera).';
+      }
+    }
+    $('sel-camera').addEventListener('change', () => { pref.camera = $('sel-camera').value; guardarPref(); });
+
+    $('btn-iniciar').addEventListener('click', async () => {
+      pref.camera = $('sel-camera').value; guardarPref();
+      try { await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }); } catch {}
+      manterTelaLigada();
+      await ligarCamera();
+      voltarInicio();
+    });
+
+    // 5 toques no logotipo voltam para a preparação (equipe)
+    let toques = 0, tToques;
+    $('logo').addEventListener('click', () => {
+      toques++; clearTimeout(tToques); tToques = setTimeout(() => { toques = 0; }, 1500);
+      if (toques >= 5) { toques = 0; desligarCamera(); mostrar('t-prep'); statusImpressora(); }
+    });
+
+    // ── Tela sempre ligada ──
+    let wake = null;
+    async function manterTelaLigada() { try { wake = await navigator.wakeLock?.request('screen'); } catch {} }
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wake !== null) manterTelaLigada(); });
+
+    // ── Câmera e leitura do QR ──
+    async function ligarCamera() {
+      desligarCamera();
+      const cam = $('camera');
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: pref.camera ? { exact: pref.camera } : undefined, width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: pref.camera ? undefined : 'user' } });
+        const v = $('video'); v.srcObject = stream; await v.play();
+        const lbl = stream.getVideoTracks()[0]?.label || '';
+        cam.classList.toggle('espelho', !/back|traseira|environment/i.test(lbl));
+        cam.classList.remove('sem-camera');
+        if ('BarcodeDetector' in window) { try { const f = await BarcodeDetector.getSupportedFormats(); if (f.includes('qr_code')) detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch {} }
+      } catch { cam.classList.add('sem-camera'); }
+    }
+    function desligarCamera() { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; }
+    const quadro = document.createElement('canvas');
+    async function loopLeitura() {
+      if (!lendo || ocupado) return;
+      const v = $('video');
+      if (stream && v.readyState >= 2) {
+        let texto = null;
+        try {
+          if (detector) { const r = await detector.detect(v); texto = r[0]?.rawValue || null; }
+          else if (window.jsQR) {
+            const lado = 480, esc = lado / Math.max(v.videoWidth, v.videoHeight);
+            quadro.width = Math.round(v.videoWidth * esc); quadro.height = Math.round(v.videoHeight * esc);
+            const cx = quadro.getContext('2d', { willReadFrequently: true });
+            cx.drawImage(v, 0, 0, quadro.width, quadro.height);
+            const img = cx.getImageData(0, 0, quadro.width, quadro.height);
+            texto = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' })?.data || null;
+          }
+        } catch {}
+        if (texto && lendo && !ocupado) { identificar(texto); return; }
+      }
+      setTimeout(loopLeitura, detector ? 120 : 220);
+    }
+
+    // ── Código digitado ──
+    let codigo = '';
+    function desenharCodigo() {
+      $('digitos').innerHTML = Array.from({ length: 6 }, (_, i) => `<span class="${codigo[i] ? 'cheio' : ''}">${codigo[i] || ''}</span>`).join('');
+      const ok = $('teclado').querySelector('.ok'); if (ok) ok.disabled = codigo.length !== 6;
+    }
+    $('teclado').innerHTML = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', 'OK'].map(k => `<button data-k="${k}" class="${k === 'OK' ? 'ok' : ''}">${k === 'OK' ? 'Confirmar' : k}</button>`).join('');
+    $('teclado').addEventListener('click', e => {
+      const k = e.target.closest('button')?.dataset.k; if (!k) return;
+      if (k === '⌫') codigo = codigo.slice(0, -1);
+      else if (k === 'OK') { if (codigo.length === 6) identificar(codigo); return; }
+      else if (codigo.length < 6) codigo += k;
+      desenharCodigo();
+      if (codigo.length === 6) setTimeout(() => { if (codigo.length === 6) identificar(codigo); }, 250);
+    });
+    $('btn-codigo').addEventListener('click', () => { codigo = ''; desenharCodigo(); mostrar('t-codigo'); clearTimeout(temporizador); temporizador = setTimeout(voltarInicio, 60000); });
+
+    // ── Identificar → confirmar ──
+    async function identificar(entrada) {
+      if (ocupado) return;
+      ocupado = true; lendo = false;
+      clearTimeout(temporizador);
+      try {
+        atual = await chamar('/identificar', { entrada });
+        bip(true);
+        telaConfirmar();
+      } catch (e) {
+        bip(false);
+        resultado(false, 'Não foi possível', e.message, 6);
+      }
+    }
+
+    function primeiro(n) { return (n || '').split(' ')[0]; }
+    function telaConfirmar() {
+      const c = atual.convidado, imprime = conf.etiqueta.imprime;
+      $('c-nome').textContent = c.nome;
+      $('c-empresa').textContent = c.empresa || '';
+      let botoes;
+      if (atual.ja_credenciado) {
+        const hora = atual.checkin_em ? String(atual.checkin_em).slice(11, 16) : '';
+        $('c-ola').textContent = `Olá, ${primeiro(c.nome)}!`;
+        $('c-pergunta').textContent = `Seu credenciamento já foi feito${hora ? ' às ' + hora : ''}.`;
+        botoes = (imprime && atual.etiquetas_restantes > 0)
+          ? `<button class="b-sim" data-acao="imprimir">Imprimir minha etiqueta</button><button class="b-nao" data-acao="sair">Está tudo certo</button>`
+          : `<button class="b-sim" data-acao="sair">Ok, obrigado!</button>`;
+      } else {
+        $('c-ola').textContent = 'Olá!';
+        $('c-pergunta').textContent = 'É você?';
+        botoes = `<button class="b-sim" data-acao="confirmar">Sim, sou eu</button><button class="b-nao" data-acao="sair">Não sou eu</button>`;
+      }
+      $('c-botoes').innerHTML = botoes;
+      mostrar('t-confirmar');
+      // Sem resposta em 25 s, volta ao início
+      const barra = $('c-tempo');
+      barra.style.transition = 'none'; barra.style.transform = 'scaleX(1)';
+      requestAnimationFrame(() => { barra.style.transition = 'transform 25s linear'; barra.style.transform = 'scaleX(0)'; });
+      temporizador = setTimeout(voltarInicio, 25000);
+    }
+    $('c-botoes').addEventListener('click', async e => {
+      const acao = e.target.closest('button')?.dataset.acao; if (!acao) return;
+      clearTimeout(temporizador);
+      if (acao === 'sair') return voltarInicio();
+      $('c-botoes').querySelectorAll('button').forEach(b => { b.disabled = true; });
+      const imprimir = conf.etiqueta.imprime && (acao === 'imprimir' || conf.etiqueta.automatica);
+      await confirmar(imprimir);
+    });
+
+    async function confirmar(imprimir) {
+      let r;
+      try { r = await chamar('/confirmar', { bilhete: atual.bilhete, imprimir }); }
+      catch (e) { bip(false); return resultado(false, 'Não foi possível', e.message, 6); }
+      const nome = primeiro(atual.convidado.nome);
+      const titulo = r.novo_checkin ? `Bem-vindo(a), ${nome}!` : `Tudo certo, ${nome}!`;
+      if (r.etiqueta) {
+        resultado(true, titulo, 'Credenciamento confirmado.', 0, '<div class="imprimindo"><span class="roda"></span>Imprimindo sua etiqueta…</div>');
+        const ok = await imprimirEtiqueta(r.etiqueta);
+        if (ok) resultado(true, titulo, 'Retire sua etiqueta logo abaixo e cole no seu crachá. Bom evento!', 8);
+        else {
+          try { await chamar('/falha-impressao', { bilhete: atual.bilhete }); } catch {}
+          resultado(true, titulo, 'Seu credenciamento está confirmado, mas a etiqueta não saiu. Por favor, procure a recepção para retirá-la.', 10);
+        }
+        return;
+      }
+      const extra = (!imprimir && conf.etiqueta.imprime && !conf.etiqueta.automatica && r.etiquetas_restantes > 0)
+        ? '<div class="botoes"><button class="b-sim" id="r-imprimir">Imprimir minha etiqueta</button></div>' : '';
+      resultado(true, titulo, r.aviso || (r.novo_checkin ? 'Credenciamento confirmado. Aproveite o evento!' : 'Seu credenciamento já estava feito. Aproveite o evento!'), extra ? 15 : 7, extra);
+      const bi = $('r-imprimir');
+      if (bi) bi.onclick = () => { clearTimeout(temporizador); bi.disabled = true; confirmar(true); };
+    }
+
+    async function imprimirEtiqueta(dados) {
+      try {
+        if (!E.usb.conectada) await E.usb.reconectar();
+        if (!E.usb.conectada) throw new Error('Impressora desconectada');
+        const m = E.normalizar(conf.etiqueta.modelo || E.modeloPadrao(100, 50));
+        await E.usb.enviar(E.paraZpl(E.desenhar(m, dados), { escurecimento: m.escurecimento }));
+        return true;
+      } catch { statusImpressora(); return false; }
+    }
+
+    function resultado(ok, titulo, sub, segundos, extra = '') {
+      $('r-selo').className = 'selo-ok' + (ok ? '' : ' selo-erro');
+      $('r-icone').setAttribute('d', ok ? 'M14 27l8 8 16-18' : 'M17 17l18 18M35 17L17 35');
+      $('r-titulo').textContent = titulo;
+      $('r-sub').textContent = sub;
+      $('r-extra').innerHTML = extra;
+      mostrar('t-resultado');
+      clearTimeout(temporizador);
+      $('r-contagem').textContent = '';
+      if (segundos > 0) {
+        let s = segundos;
+        const tique = () => { $('r-contagem').textContent = `Voltando ao início em ${s}s · toque para continuar`; if (s-- <= 0) return voltarInicio(); temporizador = setTimeout(tique, 1000); };
+        tique();
+      }
+    }
+    $('t-resultado').addEventListener('click', e => { if (!e.target.closest('button') && $('r-contagem').textContent) voltarInicio(); });
+
+    async function atualizarContador() {
+      try { const c = await chamar(''); conf.etiqueta = c.etiqueta; $('contador').textContent = `${c.presentes} de ${c.total} credenciados`; } catch {}
+    }
+
+    desenharCodigo();
+    iniciarPreparacao();
+  })();
+  </script>
+</body>
+</html>

@@ -196,6 +196,43 @@ CREATE TABLE IF NOT EXISTS credenciamento_links (
   criado_em TEXT DEFAULT (datetime('now','localtime'))
 );
 `);
+// ── Etiquetas (crachá) e totem de autocredenciamento ──
+// evento_etiqueta: se o evento imprime etiqueta, o modelo (JSON, medidas em mm) e as regras de impressão.
+// etiqueta_modelos: biblioteca de modelos reaproveitáveis entre eventos.
+// totem_links: link secreto do totem (tabela própria, como a lista de credenciamento).
+db.exec(`
+CREATE TABLE IF NOT EXISTS evento_etiqueta (
+  evento_id INTEGER PRIMARY KEY REFERENCES eventos(id) ON DELETE CASCADE,
+  imprime INTEGER DEFAULT 0,               -- 1 = o evento usa etiqueta de crachá
+  automatica INTEGER DEFAULT 1,            -- totem imprime sozinho ao credenciar
+  modelo TEXT DEFAULT '',                  -- JSON do modelo de etiqueta
+  qr_conteudo TEXT DEFAULT 'link',         -- 'link' (link do convite) | 'codigo' (código curto)
+  categoria_padrao TEXT DEFAULT 'CONVIDADO',
+  max_reimpressoes INTEGER DEFAULT 1,      -- reimpressões permitidas no totem por convidado
+  totem_titulo TEXT DEFAULT '',            -- mensagem de boas-vindas do totem
+  atualizado_em TEXT,
+  atualizado_por TEXT DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS etiqueta_modelos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nome TEXT NOT NULL,
+  modelo TEXT NOT NULL,
+  criado_por TEXT DEFAULT '',
+  criado_em TEXT DEFAULT (datetime('now','localtime'))
+);
+CREATE TABLE IF NOT EXISTS totem_links (
+  evento_id INTEGER PRIMARY KEY REFERENCES eventos(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  criado_por TEXT DEFAULT '',
+  criado_em TEXT DEFAULT (datetime('now','localtime'))
+);
+`);
+for (const sql of [
+  `ALTER TABLE convidados ADD COLUMN categoria TEXT DEFAULT ''`,          // VISITANTE, PALESTRANTE… (vazio = padrão do evento)
+  `ALTER TABLE convidados ADD COLUMN etiquetas_impressas INTEGER DEFAULT 0`,
+  `ALTER TABLE convidados ADD COLUMN etiqueta_impressa_em TEXT`,
+]) { try { db.exec(sql); } catch { /* já existe */ } }
+
 try { db.exec(`ALTER TABLE convidados ADD COLUMN checkin_por TEXT`); } catch { /* já existe */ }
 // status antes do check-in: permite desfazer um "tique" errado voltando exatamente ao que era
 try { db.exec(`ALTER TABLE convidados ADD COLUMN status_antes_checkin TEXT`); } catch { /* já existe */ }
