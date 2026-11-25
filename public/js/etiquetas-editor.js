@@ -339,11 +339,22 @@
   }
   $('btn-impressora').addEventListener('click', async () => {
     try { await E.usb.escolher(); toast('Impressora conectada: ' + E.usb.nome, 'ok'); }
-    catch (e) { if (e.name !== 'NotFoundError') toast(mensagemErroUsb(e), 'erro'); }
+    catch (e) {
+      if (usbBloqueado(e)) { lembrarNavegador(); toast('Este computador imprime pelo driver da Zebra: os botões de impressão vão abrir a janela de impressão do navegador.', 'ok'); }
+      else if (e.name !== 'NotFoundError') toast(mensagemErroUsb(e), 'erro');
+    }
     statusImpressora();
   });
+  // No Windows o driver da Zebra (ZDesigner) "segura" a porta USB e o navegador não consegue
+  // falar direto com a impressora. Nesse caso o sistema passa a usar a janela de impressão do
+  // navegador (que imprime pelo driver) e lembra disso neste computador.
+  const CHAVE_NAV = 'etiqueta_via_navegador';
+  const usbBloqueado = e => !!e && (e.name === 'SecurityError' || /Access denied|Unable to claim|claimInterface/i.test(e.message || ''));
+  const lembrarNavegador = () => { try { localStorage.setItem(CHAVE_NAV, '1'); } catch {} };
+  const preferirNavegador = () => { try { return localStorage.getItem(CHAVE_NAV) === '1'; } catch { return false; } };
+  const AVISO_NAV = 'Este computador imprime pelo driver da Zebra — abrindo a janela de impressão do navegador.';
   function mensagemErroUsb(e) {
-    if (e.name === 'SecurityError' || /Access denied|Unable to claim/i.test(e.message)) return 'O Windows está usando a impressora pelo driver dela. Use “Pela janela do navegador” neste computador — a impressão USB direta é para o tablet.';
+    if (usbBloqueado(e)) return 'O Windows está usando a impressora pelo driver dela. Use “Pela janela do navegador” neste computador — a impressão USB direta é para o tablet.';
     return e.message;
   }
   async function enviarUsb(zpl) {
@@ -351,13 +362,21 @@
     statusImpressora();
     await E.usb.enviar(zpl);
   }
-  async function testar(fn, rotulo) {
-    try { await fn(); log(rotulo + ': enviado.'); }
-    catch (e) { if (e.name === 'NotFoundError') log('Nenhuma impressora escolhida.'); else { log('Erro: ' + mensagemErroUsb(e)); toast(mensagemErroUsb(e), 'erro'); } statusImpressora(); }
+  // desenho: função que devolve o canvas (permite cair na janela do navegador); null = só USB
+  async function testar(desenho, rotulo, zplFixo) {
+    if (desenho && preferirNavegador()) { E.imprimirNavegador(desenho(), modelo); log(rotulo + ': janela de impressão do navegador.'); return; }
+    try { await enviarUsb(zplFixo || E.paraZpl(desenho(), { escurecimento: modelo.escurecimento })); log(rotulo + ': enviado.'); }
+    catch (e) {
+      if (e.name === 'NotFoundError') log('Nenhuma impressora escolhida.');
+      else if (usbBloqueado(e) && desenho) { lembrarNavegador(); log(AVISO_NAV); toast(AVISO_NAV, 'ok'); E.imprimirNavegador(desenho(), modelo); }
+      else if (usbBloqueado(e)) { lembrarNavegador(); const m = 'Neste computador a impressora é usada pelo driver do Windows; a calibração do sensor pelo sistema só funciona no tablet. Aqui, segure o botão da impressora até a luz piscar 2 vezes e solte.'; log(m); toast(m, 'erro'); }
+      else { log('Erro: ' + mensagemErroUsb(e)); toast(mensagemErroUsb(e), 'erro'); }
+      statusImpressora();
+    }
   }
-  $('t-imprimir').addEventListener('click', () => testar(() => enviarUsb(E.paraZpl(E.desenhar(modelo, amostra), { escurecimento: modelo.escurecimento })), 'Etiqueta'));
-  $('t-calib').addEventListener('click', () => testar(() => enviarUsb(E.paraZpl(E.desenharCalibracao(modelo), { escurecimento: modelo.escurecimento })), 'Calibração'));
-  $('t-sensor').addEventListener('click', () => testar(() => enviarUsb('~JC'), 'Calibração do sensor'));
+  $('t-imprimir').addEventListener('click', () => testar(() => E.desenhar(modelo, amostra), 'Etiqueta'));
+  $('t-calib').addEventListener('click', () => testar(() => E.desenharCalibracao(modelo), 'Calibração'));
+  $('t-sensor').addEventListener('click', () => testar(null, 'Calibração do sensor', '~JC'));
   $('t-navegador').addEventListener('click', () => E.imprimirNavegador(E.desenhar(modelo, amostra), modelo));
   E.usb.aoMudar(() => statusImpressora());
   E.usb.reconectar().finally(statusImpressora);
@@ -466,8 +485,16 @@
     const ids = [...selLote];
     if (!ids.length) return toast('Selecione os convidados.', 'erro');
     if (sujo && !confirm('Há alterações não salvas no modelo. Imprimir com o modelo como está na tela?')) return;
+    if (!viaNavegador && preferirNavegador()) viaNavegador = true;
+    if (!viaNavegador) {
+      try { if (!E.usb.conectada) await E.usb.escolher(); statusImpressora(); }
+      catch (e) {
+        if (e.name === 'NotFoundError') return;
+        if (!usbBloqueado(e)) return toast(mensagemErroUsb(e), 'erro');
+        lembrarNavegador(); toast(AVISO_NAV, 'ok'); viaNavegador = true;
+      }
+    }
     if (viaNavegador && ids.length > 300) return toast('Pela janela do navegador, imprima até 300 por vez.', 'erro');
-    if (!viaNavegador) { try { if (!E.usb.conectada) await E.usb.escolher(); statusImpressora(); } catch (e) { if (e.name !== 'NotFoundError') toast(mensagemErroUsb(e), 'erro'); return; } }
     const prog = $('l-prog'), barra = prog.firstElementChild;
     prog.style.display = 'block'; barra.style.width = '0';
     $('l-imprimir').disabled = $('l-navegador').disabled = true;
@@ -494,6 +521,11 @@
       toast(`${feitos} etiqueta(s) ${viaNavegador ? 'preparadas' : 'enviadas à impressora'}.`, 'ok');
       selLote.clear();
     } catch (e) {
+      if (!viaNavegador && feitos === 0 && usbBloqueado(e)) {
+        lembrarNavegador(); toast(AVISO_NAV, 'ok');
+        $('l-imprimir').disabled = $('l-navegador').disabled = false; prog.style.display = 'none';
+        return imprimirLote(true);
+      }
       toast(`Parou na etiqueta ${feitos + 1} de ${ids.length}: ${mensagemErroUsb(e)}`, 'erro');
     }
     $('l-imprimir').disabled = $('l-navegador').disabled = false;
