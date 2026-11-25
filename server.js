@@ -31,8 +31,11 @@ app.use('/api/admin', require('./src/rotas/etiquetas-admin')); // etiquetas de c
 app.use('/api/empresa', require('./src/rotas/empresa'));
 app.use('/', require('./src/rotas/publico'));
 app.use('/', require('./src/rotas/credenciamento')); // lista da recepção externa (link secreto, sem login)
+app.use('/', require('./src/rotas/facial')); // cadastro facial pelo convite (com consentimento)
 app.use('/', require('./src/rotas/totem')); // totem de autocredenciamento / impressão de etiquetas
 
+// Biblioteca e modelos de reconhecimento facial (~7 MB): cache longo no navegador/tablet
+app.use('/vendor', express.static(path.join(__dirname, 'public', 'vendor'), { maxAge: '30d' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Tratamento de erros da API

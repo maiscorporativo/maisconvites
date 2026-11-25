@@ -6,6 +6,7 @@ const express = require('express');
 const crypto = require('node:crypto');
 const { db } = require('../db');
 const { exigirAdminEvento, podeAcessarEvento, descreverUsuario } = require('../auth');
+const F = require('../facial');
 const { configEtiqueta, salvarConfigEtiqueta, validarModelo, dadosEtiqueta, SQL_CONVIDADO } = require('../etiquetas');
 
 const router = express.Router();
@@ -172,6 +173,39 @@ router.delete('/eventos/:id/totem-link', (req, res) => {
   if (!e) return;
   db.prepare(`DELETE FROM totem_links WHERE evento_id=?`).run(e.id);
   res.json({ ativo: false });
+});
+
+// ── Reconhecimento facial do totem ──
+router.get('/eventos/:id/facial', (req, res) => {
+  const e = eventoDoEscopo(req, res, req.params.id);
+  if (!e) return;
+  const cfg = F.configFacial(e.id);
+  res.json({ config: cfg, ...F.estatisticas(e.id), apagar_ate: F.dataExclusao(e, cfg) });
+});
+
+router.put('/eventos/:id/facial', (req, res) => {
+  const e = eventoDoEscopo(req, res, req.params.id);
+  if (!e) return;
+  const cfg = F.salvarConfigFacial(e.id, req.body || {}, descreverUsuario(req.session.usuario));
+  res.json({ ok: true, config: cfg, ...F.estatisticas(e.id), apagar_ate: F.dataExclusao(e, cfg) });
+});
+
+// Apaga TODOS os cadastros faciais do evento (direito de exclusão / encerramento)
+router.delete('/eventos/:id/facial/rostos', (req, res) => {
+  const e = eventoDoEscopo(req, res, req.params.id);
+  if (!e) return;
+  const n = F.removerRostosDoEvento(e.id);
+  console.log(`[facial] ${descreverUsuario(req.session.usuario)} apagou ${n} cadastro(s) facial(is) do evento ${e.id}`);
+  res.json({ ok: true, apagados: n, ...F.estatisticas(e.id) });
+});
+
+// Apaga o cadastro facial de um convidado
+router.delete('/eventos/:id/convidados/:cid/rosto', (req, res) => {
+  const e = eventoDoEscopo(req, res, req.params.id);
+  if (!e) return;
+  const c = db.prepare(`SELECT id FROM convidados WHERE id=? AND evento_id=?`).get(req.params.cid, e.id);
+  if (!c) return res.status(404).json({ erro: 'Convidado não encontrado.' });
+  res.json({ ok: true, removido: F.removerRosto(c.id) });
 });
 
 module.exports = router;

@@ -233,6 +233,31 @@ for (const sql of [
   `ALTER TABLE convidados ADD COLUMN etiqueta_impressa_em TEXT`,
 ]) { try { db.exec(sql); } catch { /* já existe */ } }
 
+// Reconhecimento facial no totem (dado biométrico — LGPD art. 11: só com consentimento
+// específico, finalidade única de credenciar no evento, apagado automaticamente depois).
+// convidado_faces guarda a "assinatura" do rosto (128 números) e uma miniatura da selfie.
+db.exec(`
+CREATE TABLE IF NOT EXISTS evento_facial (
+  evento_id INTEGER PRIMARY KEY REFERENCES eventos(id) ON DELETE CASCADE,
+  ativo INTEGER DEFAULT 0,
+  prova_vida INTEGER DEFAULT 0,            -- 1 = pede para piscar antes de reconhecer
+  rigor TEXT DEFAULT 'normal',             -- 'normal' | 'rigoroso'
+  apagar_dias INTEGER DEFAULT 7,           -- apaga os rostos N dias após a data do evento
+  atualizado_em TEXT,
+  atualizado_por TEXT DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS convidado_faces (
+  convidado_id INTEGER PRIMARY KEY REFERENCES convidados(id) ON DELETE CASCADE,
+  evento_id INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+  descritor BLOB NOT NULL,                 -- Float32 × 128
+  foto TEXT DEFAULT '',                    -- miniatura JPEG (data URL)
+  origem TEXT DEFAULT 'convite',
+  consentimento_em TEXT NOT NULL,
+  criado_em TEXT DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_faces_evento ON convidado_faces(evento_id);
+`);
+
 try { db.exec(`ALTER TABLE convidados ADD COLUMN checkin_por TEXT`); } catch { /* já existe */ }
 // status antes do check-in: permite desfazer um "tique" errado voltando exatamente ao que era
 try { db.exec(`ALTER TABLE convidados ADD COLUMN status_antes_checkin TEXT`); } catch { /* já existe */ }

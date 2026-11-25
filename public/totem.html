@@ -105,6 +105,15 @@
     select.bp { appearance: none; padding-right: 18px; }
     select.bp option { color: #000; }
     .erro-total { color: #ffb4a0; font-size: 17px; }
+
+    /* Reconhecimento facial */
+    .chip-face { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); max-width: 92%; text-align: center; padding: 9px 16px; border-radius: 99px; background: rgba(0,16,35,.82); font-size: clamp(14px, 1.8vw, 18px); font-weight: 700; display: none; backdrop-filter: blur(4px); }
+    .chip-face.on { display: block; }
+    .chip-face.bom { background: rgba(22,163,74,.9); }
+    .chip-face.erro { background: rgba(232,78,39,.92); }
+    .moldura-face { position: absolute; border: 3px solid rgba(74,222,128,.9); border-radius: 18px; pointer-events: none; display: none; transition: all .12s linear; }
+    .camera.modo-face .linha-scan { display: none; }
+    .foto-conf { width: clamp(96px, 14vw, 150px); height: clamp(96px, 14vw, 150px); border-radius: 50%; object-fit: cover; border: 4px solid var(--laranja); box-shadow: 0 10px 30px rgba(0,0,0,.4); display: none; margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -118,6 +127,7 @@
         <div class="linha-prep"><span class="rot">Câmera<small id="cam-info">—</small></span><select class="bp" id="sel-camera"></select></div>
         <div class="linha-prep" id="linha-impressora"><span class="rot">Impressora de etiquetas<small id="imp-info">—</small></span>
           <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="bp" id="btn-imp">Conectar</button><button class="bp" id="btn-teste">Teste</button></span></div>
+        <div class="linha-prep" id="linha-facial" style="display:none"><span class="rot">Reconhecimento facial<small id="face-info">—</small></span><span id="face-badge" class="ind"><i></i><span>Carregando</span></span></div>
       </div>
       <button class="bp prim" id="btn-iniciar" disabled>Iniciar totem</button>
       <div class="erro-total" id="prep-erro"></div>
@@ -131,15 +141,16 @@
     <div class="inicio-corpo">
       <div class="boas">
         <h1 id="titulo-boas">Faça seu <span>credenciamento</span></h1>
-        <p>É rápido: aproxime o QR code do seu convite da câmera.</p>
+        <p id="texto-boas">É rápido: aproxime o QR code do seu convite da câmera.</p>
         <div class="passos-t">
-          <div><b>1</b>Abra o convite no celular (e-mail ou WhatsApp)</div>
-          <div><b>2</b>Mostre o QR code para a câmera</div>
+          <div id="passo-1"><b>1</b>Abra o convite no celular (e-mail ou WhatsApp)</div>
+          <div id="passo-2"><b>2</b>Mostre o QR code para a câmera</div>
           <div><b>3</b><span>Confirme seu nome<span id="passo-etiqueta"> e retire sua etiqueta</span></span></div>
         </div>
         <button class="btn-codigo" id="btn-codigo">⌨️ Digitar o código do convite</button>
       </div>
       <div class="camera" id="camera"><video id="video" playsinline muted autoplay></video><div class="mira"></div><div class="linha-scan"></div>
+        <div class="moldura-face" id="moldura-face"></div><div class="chip-face" id="chip-face"></div>
         <div class="aviso-cam" id="aviso-cam">Câmera indisponível.<br>Use “Digitar o código do convite”.</div></div>
     </div>
     <div class="rodape"><span id="contador"></span><span>Dúvidas? Procure a recepção.</span></div>
@@ -158,6 +169,7 @@
   <!-- Confirmação -->
   <section class="tela" id="t-confirmar">
     <div class="centro">
+      <img class="foto-conf" id="c-foto" alt="">
       <div class="ola" id="c-ola">Olá!</div>
       <div class="nome-grande" id="c-nome"></div>
       <div class="empresa-grande" id="c-empresa"></div>
@@ -180,6 +192,7 @@
 
   <script src="/js/jsqr.min.js"></script>
   <script src="/js/etiqueta.js"></script>
+  <script src="/js/facial.js"></script>
   <script>
   (function () {
     const $ = id => document.getElementById(id);
@@ -199,7 +212,7 @@
       lendo = id === 't-inicio';
       if (lendo) { ocupado = false; loopLeitura(); }
     }
-    function voltarInicio() { clearTimeout(temporizador); atual = null; codigo = ''; desenharCodigo(); mostrar('t-inicio'); atualizarContador(); }
+    function voltarInicio() { clearTimeout(temporizador); atual = null; FACE.bloqueioAte = performance.now() + 2500; zerarFace(); esconderFace(); codigo = ''; desenharCodigo(); mostrar('t-inicio'); atualizarContador(); }
     document.querySelectorAll('[data-voltar]').forEach(b => b.addEventListener('click', voltarInicio));
 
     // ── Som de confirmação ──
@@ -235,11 +248,30 @@
       $('linha-impressora').style.display = imprime ? '' : 'none';
       $('ind-imp').style.display = imprime ? '' : 'none';
       $('passo-etiqueta').style.display = imprime ? '' : 'none';
+      prepararFacial();
       await listarCameras();
       if (imprime) { await E.usb.reconectar(); E.usb.aoMudar(statusImpressora); }
       statusImpressora();
       $('btn-iniciar').disabled = false;
     }
+    // ── Reconhecimento facial: carrega os modelos já na preparação ──
+    let facialPronto = false;
+    function prepararFacial() {
+      const ativo = !!conf.facial?.ativo;
+      $('linha-facial').style.display = ativo ? '' : 'none';
+      $('camera').classList.toggle('modo-face', ativo);
+      if (!ativo) return;
+      $('texto-boas').textContent = 'É rápido: olhe para a câmera — ou mostre o QR code do seu convite.';
+      $('passo-1').innerHTML = '<b>1</b>Olhe para a câmera (rosto cadastrado no convite)';
+      $('passo-2').innerHTML = '<b>2</b>Ou mostre o QR code do convite';
+      const badge = (cls, txt) => { $('face-badge').className = 'ind ' + cls; $('face-badge').lastElementChild.textContent = txt; };
+      const resumo = () => `${conf.facial.cadastrados} rosto(s) cadastrado(s)${conf.facial.prova_vida ? ' · pede para piscar' : ''}`;
+      $('face-info').textContent = resumo();
+      window.Facial.carregar(t => { $('face-info').textContent = t; })
+        .then(() => { facialPronto = true; badge('ok', 'Pronto'); $('face-info').textContent = resumo() + ' · motor ' + window.faceapi.tf.getBackend(); })
+        .catch(e => { badge('erro', 'Indisponível'); $('face-info').textContent = e.message + ' O QR code continua funcionando.'; });
+    }
+
     function statusImpressora() {
       if (!conf?.etiqueta.imprime) return;
       const ok = E.usb.conectada;
@@ -331,9 +363,83 @@
             texto = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' })?.data || null;
           }
         } catch {}
-        if (texto && lendo && !ocupado) { identificar(texto); return; }
+        if (texto && lendo && !ocupado) { esconderFace(); identificar(texto); return; }
+        if (facialPronto && conf.facial?.ativo && lendo && !ocupado) {
+          try { if (await passoFacial(v)) return; } catch {}
+        }
       }
-      setTimeout(loopLeitura, detector ? 120 : 220);
+      setTimeout(loopLeitura, facialPronto ? 40 : (detector ? 120 : 220));
+    }
+
+    // ── Rosto: detecta → (piscada) → 2 leituras → servidor procura o convidado ──
+    const FACE = { bloqueioAte: 0, leituras: [], ultimaLeitura: 0, piscou: false, piscada: null, falhasSeguidas: 0, ultimoId: null, ultimoEm: 0, semRosto: 0 };
+    function chip(txt, tipo = '') { const c = $('chip-face'); c.textContent = txt; c.className = 'chip-face' + (txt ? ' on' : '') + (tipo ? ' ' + tipo : ''); }
+    function esconderFace() { chip(''); $('moldura-face').style.display = 'none'; }
+    function zerarFace() { FACE.leituras = []; FACE.piscou = false; FACE.piscada?.zerar(); }
+    function moldura(det, v) {
+      const m = $('moldura-face'), cam = $('camera');
+      if (!det) { m.style.display = 'none'; return; }
+      // vídeo em "cover" num quadro quadrado: converte as coordenadas
+      const W = cam.clientWidth, H = cam.clientHeight, esc = Math.max(W / v.videoWidth, H / v.videoHeight);
+      const ox = (W - v.videoWidth * esc) / 2, oy = (H - v.videoHeight * esc) / 2;
+      let x = det.caixa.x * esc + ox; const y = det.caixa.y * esc + oy, w = det.caixa.width * esc, h = det.caixa.height * esc;
+      if (cam.classList.contains('espelho')) x = W - x - w;
+      Object.assign(m.style, { display: 'block', left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
+    }
+
+    /** Um passo do reconhecimento. Devolve true se já disparou a identificação. */
+    async function passoFacial(v) {
+      const F = window.Facial;
+      const agora = performance.now();
+      if (agora < FACE.bloqueioAte) return false;
+      const det = await F.detectar(v, { tamanhos: [224, 160] });
+      if (!lendo || ocupado) return false;
+      if (!det) {
+        if (++FACE.semRosto > 4) { zerarFace(); esconderFace(); FACE.falhasSeguidas = 0; }
+        return false;
+      }
+      FACE.semRosto = 0;
+      moldura(det, v);
+      const av = F.avaliar(det, v, { tamanhoMin: 0.16 });
+      if (!av.ok) { zerarFace(); chip(av.dica); return false; }
+      if (conf.facial.prova_vida && !FACE.piscou) {
+        FACE.piscada ||= F.detectorPiscada();
+        if (FACE.piscada.alimentar(F.ear(det.pontos))) FACE.piscou = true;
+        else { chip('Pisque os olhos devagar 👀'); return false; }
+      }
+      chip('Reconhecendo…', 'bom');
+      if (agora - FACE.ultimaLeitura < 150) return false;
+      FACE.ultimaLeitura = agora;
+      FACE.leituras.push(await F.descritor(det));
+      if (FACE.leituras.length < 2) return false;
+      const descritores = FACE.leituras.slice(-2);
+      zerarFace();
+      return identificarPorRosto(descritores);
+    }
+
+    async function identificarPorRosto(descritores) {
+      ocupado = true;
+      let r;
+      try { r = await chamar('/reconhecer', { descritores }); }
+      catch (e) {
+        ocupado = false;
+        FACE.falhasSeguidas++;
+        const espera = e.status === 429 ? 30000 : (FACE.falhasSeguidas >= 2 ? 7000 : 3500);
+        FACE.bloqueioAte = performance.now() + espera;
+        chip(e.status === 404 ? 'Não reconhecemos seu rosto. Mostre o QR code ou digite o código.' : e.message, 'erro');
+        $('moldura-face').style.display = 'none';
+        return false;
+      }
+      const id = String(r.bilhete).split('.')[0];
+      // Mesma pessoa que acabou de usar o totem e continua na frente dele: ignora
+      if (id === FACE.ultimoId && Date.now() - FACE.ultimoEm < 30000) {
+        ocupado = false; FACE.bloqueioAte = performance.now() + 3000; chip(''); return false;
+      }
+      FACE.ultimoId = id; FACE.ultimoEm = Date.now(); FACE.falhasSeguidas = 0;
+      if (!lendo) { ocupado = false; return false; }
+      lendo = false; clearTimeout(temporizador); esconderFace();
+      atual = r; bip(true); telaConfirmar();
+      return true;
     }
 
     // ── Código digitado ──
@@ -360,6 +466,7 @@
       clearTimeout(temporizador);
       try {
         atual = await chamar('/identificar', { entrada });
+        FACE.ultimoId = String(atual.bilhete).split('.')[0]; FACE.ultimoEm = Date.now();
         bip(true);
         telaConfirmar();
       } catch (e) {
@@ -371,6 +478,8 @@
     function primeiro(n) { return (n || '').split(' ')[0]; }
     function telaConfirmar() {
       const c = atual.convidado, imprime = conf.etiqueta.imprime;
+      $('c-foto').style.display = atual.foto ? 'block' : 'none';
+      if (atual.foto) $('c-foto').src = atual.foto;
       $('c-nome').textContent = c.nome;
       $('c-empresa').textContent = c.empresa || '';
       let botoes;
@@ -405,7 +514,7 @@
 
     async function confirmar(imprimir) {
       let r;
-      try { r = await chamar('/confirmar', { bilhete: atual.bilhete, imprimir }); }
+      try { r = await chamar('/confirmar', { bilhete: atual.bilhete, imprimir, por: atual.por || '' }); }
       catch (e) { bip(false); return resultado(false, 'Não foi possível', e.message, 6); }
       const nome = primeiro(atual.convidado.nome);
       const titulo = r.novo_checkin ? `Bem-vindo(a), ${nome}!` : `Tudo certo, ${nome}!`;

@@ -10,6 +10,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { db } = require('../db');
 const { matrizQr, configEtiqueta, dadosEtiqueta, SQL_CONVIDADO } = require('../etiquetas');
+const F = require('../facial');
 
 const router = express.Router();
 const SEGREDO = process.env.SESSION_SECRET || 'segredo-dev-trocar-em-producao';
@@ -45,6 +46,17 @@ function registrarFalha(ip) {
   if (falhas.size > 5000) for (const [k, v] of falhas) if (Date.now() - v.inicio > JANELA) falhas.delete(k);
 }
 
+// Reconhecimento facial: rostos não cadastrados são comuns (não é "chute"), então o limite
+// é bem mais alto e separado do de códigos.
+const falhasFace = new Map();
+const MAX_FALHAS_FACE = 150;
+function bloqueadoFace(ip) { const f = falhasFace.get(ip); return !!f && Date.now() - f.inicio <= JANELA && f.n >= MAX_FALHAS_FACE; }
+function registrarFalhaFace(ip) {
+  const f = falhasFace.get(ip);
+  if (!f || Date.now() - f.inicio > JANELA) falhasFace.set(ip, { inicio: Date.now(), n: 1 }); else f.n++;
+  if (falhasFace.size > 5000) for (const [k, v] of falhasFace) if (Date.now() - v.inicio > JANELA) falhasFace.delete(k);
+}
+
 const assinar = txt => crypto.createHmac('sha256', SEGREDO).update(txt).digest('base64url').slice(0, 32);
 function criarBilhete(tokenTotem, convidadoId) {
   const exp = Date.now() + VALIDADE_BILHETE;
@@ -60,6 +72,10 @@ function lerBilhete(tokenTotem, bilhete) {
 
 function etiquetaPublica(cfg) {
   return { imprime: !!cfg.imprime, automatica: !!cfg.automatica, modelo: cfg.modelo, max_reimpressoes: cfg.max_reimpressoes };
+}
+function facialPublica(eventoId) {
+  const f = F.configFacial(eventoId);
+  return { ativo: !!f.ativo, prova_vida: !!f.prova_vida, cadastrados: f.ativo ? F.estatisticas(eventoId).cadastrados : 0 };
 }
 function impressoesPermitidas(cfg) { return 1 + (cfg.max_reimpressoes || 0); }
 
@@ -94,6 +110,7 @@ router.get('/api/totem/:token', (req, res) => {
     evento: { nome: evento.nome, data_evento: evento.data_evento, hora_evento: evento.hora_evento, local_nome: evento.local_nome },
     titulo: cfg.totem_titulo || '',
     etiqueta: etiquetaPublica(cfg),
+    facial: facialPublica(evento.id),
     presentes: total.p || 0, total: total.n || 0,
   });
 });
@@ -117,10 +134,14 @@ router.post('/api/totem/:token/identificar', (req, res) => {
   }
   if (c.status === 'cancelado') return res.status(400).json({ erro: 'Este convite está cancelado. Por favor, procure a recepção.' });
 
+  res.json(respostaIdentificacao(req.params.token, evento, c));
+});
+
+function respostaIdentificacao(tokenTotem, evento, c, extra = {}) {
   const cfg = configEtiqueta(evento.id);
   const restantes = cfg.imprime ? Math.max(0, impressoesPermitidas(cfg) - (c.etiquetas_impressas || 0)) : 0;
-  res.json({
-    bilhete: criarBilhete(req.params.token, c.id),
+  return {
+    bilhete: criarBilhete(tokenTotem, c.id),
     convidado: {
       nome: limpo(c.nome), primeiro_nome: limpo(c.nome).split(' ')[0] || '',
       empresa: c.empresa_nome ? limpo(c.empresa_nome) : '', cargo: limpo(c.cargo),
@@ -128,7 +149,30 @@ router.post('/api/totem/:token/identificar', (req, res) => {
     ja_credenciado: c.status === 'checkin',
     checkin_em: c.status === 'checkin' ? c.checkin_em : null,
     etiquetas_restantes: restantes,
-  });
+    ...extra,
+  };
+}
+
+// Reconhecimento facial: o tablet manda 1 a 5 leituras (assinaturas de 128 números) do rosto
+router.post('/api/totem/:token/reconhecer', (req, res) => {
+  const evento = eventoDoTotem(req, res);
+  if (!evento) return;
+  const cfgF = F.configFacial(evento.id);
+  if (!cfgF.ativo) return res.status(400).json({ erro: 'Reconhecimento facial desligado para este evento.', motivo: 'desligado' });
+  const ip = req.ip || 'x';
+  if (bloqueadoFace(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Use o QR code ou procure a recepção.', motivo: 'bloqueado' });
+  const descritor = F.mediaDescritores(req.body?.descritores);
+  if (!descritor) return res.status(400).json({ erro: 'Leitura do rosto inválida.', motivo: 'invalido' });
+  const r = F.reconhecer(evento.id, descritor, cfgF.rigor);
+  if (!r.ok) {
+    registrarFalhaFace(ip);
+    return res.status(404).json({ erro: 'Não reconhecemos seu rosto. Mostre o QR code do convite ou digite o código.', motivo: r.motivo });
+  }
+  const c = db.prepare(`${SQL_CONVIDADO} WHERE c.id=? AND c.evento_id=?`).get(r.convidado_id, evento.id);
+  if (!c) return res.status(404).json({ erro: 'Não reconhecemos seu rosto.', motivo: 'nao_reconhecido' });
+  if (c.status === 'cancelado') return res.status(400).json({ erro: 'Este convite está cancelado. Por favor, procure a recepção.' });
+  const rosto = F.rostoDoConvidado(c.id);
+  res.json(respostaIdentificacao(req.params.token, evento, c, { por: 'facial', foto: rosto?.foto || '', confianca: Math.round((1 - r.distancia) * 100) }));
 });
 
 // Confirma: faz o check-in e devolve a etiqueta (se o evento imprime e ainda há impressões)
@@ -147,7 +191,7 @@ router.post('/api/totem/:token/confirmar', (req, res) => {
   let novoCheckin = false;
   if (c.status !== 'checkin') {
     db.prepare(`UPDATE convidados SET status='checkin', status_antes_checkin=status, checkin_em=datetime('now','localtime'),
-                checkin_por='Totem de autocredenciamento' WHERE id=? AND status!='checkin'`).run(c.id);
+                checkin_por=? WHERE id=? AND status!='checkin'`).run(req.body?.por === 'facial' ? 'Totem (reconhecimento facial)' : 'Totem de autocredenciamento', c.id);
     novoCheckin = true;
   }
   let etiqueta = null, aviso = '';

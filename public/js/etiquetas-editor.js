@@ -47,6 +47,7 @@
     marcarSujo(false);
     tudo();
     desenharTotem();
+    carregarFacial();
     carregarModelos();
     carregarConvidados();
   }
@@ -545,6 +546,38 @@
     $('tt-novo').onclick = async () => { if (!confirm('Gerar um novo link? O atual para de funcionar na hora (inclusive no tablet).')) return; info.totem = await api(`/api/admin/eventos/${eventoId}/totem-link`, { method: 'POST' }); desenharTotem(); toast('Novo link gerado.', 'ok'); };
     $('tt-desativar').onclick = async () => { if (!confirm('Desativar o totem? O link para de funcionar.')) return; info.totem = await api(`/api/admin/eventos/${eventoId}/totem-link`, { method: 'DELETE' }); desenharTotem(); };
   }
+
+  // ═══════════ Reconhecimento facial ═══════════
+  let facial = null;
+  async function carregarFacial() {
+    try { facial = await api(`/api/admin/eventos/${eventoId}/facial`); } catch (e) { $('fa-resumo').textContent = e.message; return; }
+    const c = facial.config;
+    $('fa-ativo').checked = !!c.ativo; $('fa-vida').checked = !!c.prova_vida;
+    $('fa-rigor').value = c.rigor || 'normal';
+    const dias = String(c.apagar_dias ?? 7);
+    if (![...$('fa-dias').options].some(o => o.value === dias)) $('fa-dias').insertAdjacentHTML('beforeend', `<option value="${dias}">${dias} dias depois</option>`);
+    $('fa-dias').value = dias;
+    resumoFacial();
+  }
+  function resumoFacial() {
+    const pct = facial.total ? Math.round(facial.cadastrados / facial.total * 100) : 0;
+    $('fa-resumo').innerHTML = `<b>${facial.cadastrados}</b> de ${facial.total} convidados cadastraram o rosto (${pct}%)` +
+      (facial.apagar_ate ? ` · apagados automaticamente em <b>${dataBr(facial.apagar_ate)}</b>` : '');
+    $('fa-apagar').disabled = !facial.cadastrados;
+  }
+  $('fa-salvar').addEventListener('click', async () => {
+    try {
+      facial = await api(`/api/admin/eventos/${eventoId}/facial`, { method: 'PUT', body: {
+        ativo: $('fa-ativo').checked, prova_vida: $('fa-vida').checked, rigor: $('fa-rigor').value, apagar_dias: Number($('fa-dias').value) } });
+      resumoFacial();
+      toast(facial.config.ativo ? 'Reconhecimento facial ativado. Recarregue o totem no tablet.' : 'Reconhecimento facial desligado.', 'ok');
+    } catch (e) { toast(e.message, 'erro'); }
+  });
+  $('fa-apagar').addEventListener('click', async () => {
+    if (!confirm(`Apagar os ${facial.cadastrados} cadastro(s) facial(is) deste evento? Isso não pode ser desfeito — os convidados voltam a usar o QR code.`)) return;
+    try { const r = await api(`/api/admin/eventos/${eventoId}/facial/rostos`, { method: 'DELETE' }); Object.assign(facial, r); resumoFacial(); toast(r.apagados + ' cadastro(s) apagado(s).', 'ok'); }
+    catch (e) { toast(e.message, 'erro'); }
+  });
 
   // ═══════════ Abas ═══════════
   $('abas').addEventListener('click', e => {

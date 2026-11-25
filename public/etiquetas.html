@@ -288,6 +288,27 @@
         </ol>
         <p style="font-size:13px;color:var(--texto-suave)">Sem impressora (jantares): desligue “Usa etiqueta de crachá” — o totem só faz o check-in.</p>
       </div>
+      <div class="painel compacto" id="painel-facial">
+        <h2>Reconhecimento facial</h2>
+        <p>O convidado cadastra uma selfie pela página do próprio convite (com autorização LGPD) e, no evento, só precisa
+          <b>olhar para o totem</b>. Quem não cadastrou continua usando o QR code ou o código.</p>
+        <label class="chave"><input type="checkbox" id="fa-ativo"><span>Ativar reconhecimento facial<small>Mostra no convite a opção “Credenciamento expresso”.</small></span></label>
+        <label class="chave"><input type="checkbox" id="fa-vida"><span>Pedir para piscar (prova de vida)<small>Impede usar a foto de outra pessoa na frente da câmera. Deixa a leitura um pouco mais lenta.</small></span></label>
+        <div class="d2">
+          <div><label for="fa-rigor">Rigor da comparação</label>
+            <select id="fa-rigor"><option value="normal">Normal (recomendado)</option><option value="rigoroso">Rigoroso (pessoas parecidas)</option></select></div>
+          <div><label for="fa-dias">Apagar os rostos após a data do evento</label>
+            <select id="fa-dias"><option value="1">1 dia depois</option><option value="3">3 dias depois</option><option value="7">7 dias depois</option><option value="30">30 dias depois</option></select></div>
+        </div>
+        <div id="fa-resumo" style="margin:10px 0;font-size:14px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="botao-ouro" id="fa-salvar">Salvar reconhecimento facial</button>
+          <button class="botao-claro" id="fa-apagar">Apagar todos os rostos agora</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--texto-suave);margin-top:10px">Privacidade: a comparação é feita no nosso servidor, sem serviços externos.
+          Guardamos só a “assinatura” do rosto (128 números) e uma miniatura da selfie, que são apagadas automaticamente no prazo acima.
+          O convidado pode remover o cadastro a qualquer momento no convite. Dica: avise na mensagem de WhatsApp/e-mail que dá para cadastrar o rosto pelo convite.</p>
+      </div>
     </div>
   </section>
 
