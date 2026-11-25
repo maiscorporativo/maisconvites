@@ -126,7 +126,7 @@
       <div class="cartao-prep">
         <div class="linha-prep"><span class="rot">Câmera<small id="cam-info">—</small></span><select class="bp" id="sel-camera"></select></div>
         <div class="linha-prep" id="linha-impressora"><span class="rot">Impressora de etiquetas<small id="imp-info">—</small></span>
-          <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="bp" id="btn-imp">Conectar</button><button class="bp" id="btn-teste">Teste</button></span></div>
+          <span style="display:flex;gap:8px;flex-wrap:wrap"><select class="bp" id="sel-modo-imp" title="Como a etiqueta chega na impressora"><option value="usb">USB direto (tablet)</option><option value="driver">Impressora do Windows</option></select><button class="bp" id="btn-imp">Conectar</button><button class="bp" id="btn-teste">Teste</button></span></div>
         <div class="linha-prep" id="linha-facial" style="display:none"><span class="rot">Reconhecimento facial<small id="face-info">—</small></span><span id="face-badge" class="ind"><i></i><span>Carregando</span></span></div>
       </div>
       <button class="bp prim" id="btn-iniciar" disabled>Iniciar totem</button>
@@ -250,7 +250,7 @@
       $('passo-etiqueta').style.display = imprime ? '' : 'none';
       prepararFacial();
       await listarCameras();
-      if (imprime) { await E.usb.reconectar(); E.usb.aoMudar(statusImpressora); }
+      if (imprime && !viaDriver()) { await E.usb.reconectar(); E.usb.aoMudar(statusImpressora); }
       statusImpressora();
       $('btn-iniciar').disabled = false;
     }
@@ -272,8 +272,21 @@
         .catch(e => { badge('erro', 'Indisponível'); $('face-info').textContent = e.message + ' O QR code continua funcionando.'; });
     }
 
+    // Impressão: "usb" = direto pela porta USB (tablet Android); "driver" = pelo driver da Zebra
+    // no Windows (janela de impressão do Chrome; com o atalho --kiosk-printing sai sem perguntar).
+    const viaDriver = () => pref.modoImp === 'driver';
+    const usbBloqueado = e => !!e && (e.name === 'SecurityError' || /Access denied|Unable to claim|claimInterface/i.test(e.message || ''));
+    function usarDriver() { pref.modoImp = 'driver'; guardarPref(); $('sel-modo-imp').value = 'driver'; statusImpressora(); }
+    $('sel-modo-imp').value = viaDriver() ? 'driver' : 'usb';
+    $('sel-modo-imp').addEventListener('change', () => { pref.modoImp = $('sel-modo-imp').value; guardarPref(); $('prep-erro').textContent = ''; if (!viaDriver()) E.usb.reconectar().finally(statusImpressora); statusImpressora(); });
     function statusImpressora() {
       if (!conf?.etiqueta.imprime) return;
+      $('btn-imp').style.display = viaDriver() ? 'none' : '';
+      if (viaDriver()) {
+        $('imp-info').textContent = 'Pela impressora padrão do Windows (deixe a ZDesigner como padrão)';
+        $('ind-imp').className = 'ind ok'; $('ind-imp').lastElementChild.textContent = 'Impressora do Windows';
+        return;
+      }
       const ok = E.usb.conectada;
       $('imp-info').textContent = ok ? 'Conectada: ' + E.usb.nome : (E.usb.suportado() ? 'Nenhuma impressora conectada' : 'Este navegador não permite USB — use o Chrome');
       $('btn-imp').textContent = ok ? 'Trocar' : 'Conectar';
@@ -281,7 +294,12 @@
       $('ind-imp').lastElementChild.textContent = ok ? 'Impressora pronta' : 'Impressora desconectada';
     }
     $('btn-imp').addEventListener('click', async () => {
-      try { await E.usb.escolher(); } catch (e) { if (e.name !== 'NotFoundError') $('prep-erro').textContent = e.message; }
+      $('prep-erro').textContent = '';
+      try { await E.usb.escolher(); }
+      catch (e) {
+        if (usbBloqueado(e)) { usarDriver(); $('prep-erro').textContent = 'Este computador usa a impressora pelo driver da Zebra — o totem passou a imprimir pela "Impressora do Windows".'; }
+        else if (e.name !== 'NotFoundError') $('prep-erro').textContent = e.message;
+      }
       statusImpressora();
     });
     $('btn-teste').addEventListener('click', async () => {
@@ -289,10 +307,15 @@
       try {
         const m = E.normalizar(conf.etiqueta.modelo || E.modeloPadrao(100, 50));
         const qr = await (await fetch('/api/totem/qr?texto=teste')).json();
+        const tela = E.desenhar(m, { ...E.EXEMPLO, nome: 'Teste do Totem', qr_matriz: qr, evento: conf.evento.nome });
+        if (viaDriver()) { await E.imprimirNavegador(tela, m); return; }
         if (!E.usb.conectada) await E.usb.escolher();
-        await E.usb.enviar(E.paraZpl(E.desenhar(m, { ...E.EXEMPLO, nome: 'Teste do Totem', qr_matriz: qr, evento: conf.evento.nome }), { escurecimento: m.escurecimento }));
+        await E.usb.enviar(E.paraZpl(tela, { escurecimento: m.escurecimento }));
         statusImpressora();
-      } catch (e) { if (e.name !== 'NotFoundError') $('prep-erro').textContent = 'Falha no teste: ' + e.message; }
+      } catch (e) {
+        if (usbBloqueado(e)) { usarDriver(); $('prep-erro').textContent = 'Este computador usa a impressora pelo driver da Zebra — o totem passou a imprimir pela "Impressora do Windows". Toque em Teste de novo.'; }
+        else if (e.name !== 'NotFoundError') $('prep-erro').textContent = 'Falha no teste: ' + e.message;
+      }
     });
 
     async function listarCameras() {
@@ -538,6 +561,7 @@
 
     async function imprimirEtiqueta(dados) {
       try {
+        if (viaDriver()) { const m = E.normalizar(conf.etiqueta.modelo || E.modeloPadrao(100, 50)); await E.imprimirNavegador(E.desenhar(m, dados), m); return true; }
         if (!E.usb.conectada) await E.usb.reconectar();
         if (!E.usb.conectada) throw new Error('Impressora desconectada');
         const m = E.normalizar(conf.etiqueta.modelo || E.modeloPadrao(100, 50));
