@@ -376,13 +376,12 @@
     function chip(txt, tipo = '') { const c = $('chip-face'); c.textContent = txt; c.className = 'chip-face' + (txt ? ' on' : '') + (tipo ? ' ' + tipo : ''); }
     function esconderFace() { chip(''); $('moldura-face').style.display = 'none'; }
     function zerarFace() { FACE.leituras = []; FACE.piscou = false; FACE.piscada?.zerar(); }
-    function moldura(det, v) {
+    function moldura(det, quadro) {
       const m = $('moldura-face'), cam = $('camera');
       if (!det) { m.style.display = 'none'; return; }
-      // vídeo em "cover" num quadro quadrado: converte as coordenadas
-      const W = cam.clientWidth, H = cam.clientHeight, esc = Math.max(W / v.videoWidth, H / v.videoHeight);
-      const ox = (W - v.videoWidth * esc) / 2, oy = (H - v.videoHeight * esc) / 2;
-      let x = det.caixa.x * esc + ox; const y = det.caixa.y * esc + oy, w = det.caixa.width * esc, h = det.caixa.height * esc;
+      // o quadro analisado é exatamente a área visível: só muda a escala
+      const W = cam.clientWidth, esc = W / quadro.width;
+      let x = det.caixa.x * esc; const y = det.caixa.y * esc, w = det.caixa.width * esc, h = det.caixa.height * esc;
       if (cam.classList.contains('espelho')) x = W - x - w;
       Object.assign(m.style, { display: 'block', left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
     }
@@ -392,15 +391,17 @@
       const F = window.Facial;
       const agora = performance.now();
       if (agora < FACE.bloqueioAte) return false;
-      const det = await F.detectar(v, { tamanhos: [224, 160] });
+      // Analisa só o que aparece no quadro da câmera (mesmo recorte do "object-fit: cover")
+      const quadro = F.capturarVisivel(v, $('camera'), 480);
+      const det = await F.detectar(quadro, { tamanhos: [224, 160] });
       if (!lendo || ocupado) return false;
       if (!det) {
         if (++FACE.semRosto > 4) { zerarFace(); esconderFace(); FACE.falhasSeguidas = 0; }
         return false;
       }
       FACE.semRosto = 0;
-      moldura(det, v);
-      const av = F.avaliar(det, v, { tamanhoMin: 0.16 });
+      moldura(det, quadro);
+      const av = F.avaliar(det, quadro, { tamanhoMin: 0.24, tamanhoMax: 0.85, folga: 0.26 });
       if (!av.ok) { zerarFace(); chip(av.dica); return false; }
       if (conf.facial.prova_vida && !FACE.piscou) {
         FACE.piscada ||= F.detectorPiscada();

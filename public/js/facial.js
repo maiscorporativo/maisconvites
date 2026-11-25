@@ -77,17 +77,23 @@
 
   /**
    * O rosto está bom para ler? Devolve { ok, dica }.
-   * tamanhoMin: fração mínima da largura da imagem ocupada pelo rosto.
+   * Medidas relativas à imagem analisada — use capturarVisivel() para que sejam relativas
+   * ao que a pessoa VÊ na tela.
+   *  tamanhoMin/tamanhoMax: fração da largura ocupada pelo rosto
+   *  folga: quanto o centro do rosto pode se afastar do centro (fração da imagem)
+   *  centroY: altura ideal do centro do rosto (0,5 = meio; menor = mais para cima)
    */
-  function avaliar(det, fonte, { tamanhoMin = 0.22, umSo = false } = {}) {
+  function avaliar(det, fonte, { tamanhoMin = 0.22, tamanhoMax = 0.92, folga = 0.28, centroY = 0.5, umSo = false } = {}) {
     if (!det) return { ok: false, dica: 'Posicione seu rosto no quadro' };
     if (umSo && det.quantos > 1) return { ok: false, dica: 'Só uma pessoa na foto, por favor' };
     const { w, h } = dimensoes(fonte);
     const b = det.caixa;
     if (b.width / w < tamanhoMin) return { ok: false, dica: 'Aproxime-se um pouco' };
+    if (b.width / w > tamanhoMax) return { ok: false, dica: 'Afaste-se um pouco' };
     const cx = (b.x + b.width / 2) / w, cy = (b.y + b.height / 2) / h;
-    if (cx < 0.22 || cx > 0.78 || cy < 0.18 || cy > 0.82) return { ok: false, dica: 'Centralize o rosto no quadro' };
-    if (b.width / w > 0.92) return { ok: false, dica: 'Afaste-se um pouco' };
+    if (Math.abs(cx - 0.5) > folga || Math.abs(cy - centroY) > folga) return { ok: false, dica: 'Centralize o rosto no quadro' };
+    // a caixa inteira do rosto precisa estar dentro da imagem (nada cortado)
+    if (b.x < 0 || b.y < 0 || b.x + b.width > w || b.y + b.height > h) return { ok: false, dica: 'Centralize o rosto no quadro' };
     // De frente: o nariz fica no meio dos olhos
     const pts = det.pontos.positions;
     const olhoE = media(pts.slice(36, 42)), olhoD = media(pts.slice(42, 48)), nariz = pts[30];
@@ -126,17 +132,61 @@
     };
   }
 
-  /** Miniatura quadrada do rosto (JPEG ~10 KB) para conferência visual */
-  function miniatura(fonte, caixa, lado = 200, espelhar = false) {
-    const { w, h } = dimensoes(fonte);
-    const m = Math.max(caixa.width, caixa.height) * 1.6;
-    const x = Math.max(0, caixa.x + caixa.width / 2 - m / 2), y = Math.max(0, caixa.y + caixa.height / 2 - m / 2 - caixa.height * 0.08);
-    const lw = Math.min(m, w - x), lh = Math.min(m, h - y), l = Math.min(lw, lh);
-    const c = document.createElement('canvas'); c.width = c.height = lado;
+  /**
+   * Parte do vídeo que aparece na tela num elemento com object-fit: cover (centralizado).
+   * Devolve o retângulo em coordenadas do vídeo.
+   */
+  function regiaoVisivel(video, elemento) {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const ar = elemento.clientWidth / elemento.clientHeight || 1;
+    let w = vw, h = vw / ar;
+    if (h > vh) { h = vh; w = vh * ar; }
+    return { x: (vw - w) / 2, y: (vh - h) / 2, w, h };
+  }
+
+  /**
+   * Copia para um canvas EXATAMENTE o que a pessoa vê no elemento (sem espelhar).
+   * Detecção, assinatura e foto saem desse mesmo quadro → o que se vê é o que se grava.
+   */
+  function capturarVisivel(video, elemento, larguraMax = 640) {
+    const r = regiaoVisivel(video, elemento);
+    const esc = Math.min(1, larguraMax / r.w);
+    const c = document.createElement('canvas');
+    c.width = Math.round(r.w * esc); c.height = Math.round(r.h * esc);
+    c.getContext('2d').drawImage(video, r.x, r.y, r.w, r.h, 0, 0, c.width, c.height);
+    return c;
+  }
+
+  /** Foto do quadro capturado, como apareceu na tela (espelhada, igual a um espelho) */
+  function fotoDoQuadro(quadro, { largura = 300, proporcao = null, espelhar = true, qualidade = 0.85 } = {}) {
+    // proporcao (largura/altura) fixa o formato final; o desvio do arredondamento da tela é < 1%
+    const c = document.createElement('canvas');
+    c.width = largura; c.height = Math.round(largura / (proporcao || quadro.width / quadro.height));
     const cx = c.getContext('2d');
-    if (espelhar) { cx.translate(lado, 0); cx.scale(-1, 1); }
-    cx.drawImage(fonte, x, y, l, l, 0, 0, lado, lado);
-    return c.toDataURL('image/jpeg', 0.82);
+    cx.imageSmoothingQuality = 'high';
+    if (espelhar) { cx.translate(c.width, 0); cx.scale(-1, 1); }
+    cx.drawImage(quadro, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', qualidade);
+  }
+
+  /**
+   * Recorte 3:4 centrado no rosto (foto enviada da galeria). Mantém o rosto no centro:
+   * se o recorte passar da borda, ele é DESLOCADO para dentro (nunca encolhido num canto);
+   * só encolhe — continuando centrado — se for maior que a própria imagem.
+   */
+  function recorteRosto(fonte, caixa, { largura = 300, proporcao = 3 / 4, fator = 2.1 } = {}) {
+    const { w, h } = dimensoes(fonte);
+    let rw = caixa.width * fator, rh = rw / proporcao;
+    if (rw > w) { rw = w; rh = rw / proporcao; }
+    if (rh > h) { rh = h; rw = rh * proporcao; }
+    const cxr = caixa.x + caixa.width / 2, cyr = caixa.y + caixa.height * 0.45;
+    const x = Math.min(Math.max(0, cxr - rw / 2), w - rw), y = Math.min(Math.max(0, cyr - rh / 2), h - rh);
+    const c = document.createElement('canvas');
+    c.width = largura; c.height = Math.round(largura / proporcao);
+    const cx = c.getContext('2d');
+    cx.imageSmoothingQuality = 'high';
+    cx.drawImage(fonte, x, y, rw, rh, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.85);
   }
 
   function distancia(a, b) { let s = 0; for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; } return Math.sqrt(s); }
@@ -147,5 +197,5 @@
     return true;
   }
 
-  window.Facial = { carregar, detectar, descritor, avaliar, ear, detectorPiscada, miniatura, distancia, coerentes };
+  window.Facial = { carregar, detectar, descritor, avaliar, ear, detectorPiscada, regiaoVisivel, capturarVisivel, fotoDoQuadro, recorteRosto, distancia, coerentes };
 })();

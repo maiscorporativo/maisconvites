@@ -22,6 +22,8 @@
     .facial-quadro.bom { box-shadow: 0 0 0 5px #4ade80; }
     .facial-quadro video, .facial-quadro img { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
     .facial-quadro img { transform: none; }
+    .facial-guia { position: absolute; left: 50%; top: 47%; width: 58%; height: 60%; transform: translate(-50%, -50%); border: 3px dashed rgba(255,255,255,.75); border-radius: 50%; pointer-events: none; transition: border-color .2s; box-shadow: 0 0 0 9999px rgba(4,16,31,.28); }
+    .facial-quadro.bom .facial-guia { border-color: #4ade80; border-style: solid; }
     .facial-dica { font-size: 19px; font-weight: 700; text-align: center; min-height: 28px; }
     .facial-sub { font-size: 14px; opacity: .7; text-align: center; max-width: 420px; }
     .facial-barra { width: min(78vw, 360px); height: 6px; border-radius: 6px; background: rgba(255,255,255,.15); overflow: hidden; }
@@ -88,10 +90,10 @@
     const modal = document.createElement('div');
     modal.className = 'facial-modal';
     modal.innerHTML = `
-      <div class="facial-quadro" id="f-quadro"><video id="f-video" playsinline muted autoplay></video></div>
+      <div class="facial-quadro" id="f-quadro"><video id="f-video" playsinline muted autoplay></video><div class="facial-guia"></div></div>
       <div class="facial-barra"><i id="f-prog"></i></div>
       <div class="facial-dica" id="f-dica">Abrindo a câmera…</div>
-      <div class="facial-sub" id="f-sub">Tire óculos escuros e boné. Procure um lugar bem iluminado.</div>
+      <div class="facial-sub" id="f-sub">Encaixe o rosto no oval tracejado. Tire óculos escuros e boné e procure um lugar bem iluminado.</div>
       <div class="facial-acoes" id="f-botoes"><button class="botao-claro-f" id="f-cancelar">Cancelar</button>
         <label class="botao-claro-f" style="display:inline-block">Enviar uma foto<input type="file" accept="image/*" capture="user" id="f-arquivo" hidden></label></div>`;
     document.body.appendChild(modal);
@@ -113,7 +115,7 @@
         const det = await F.detectar(img, { tamanhos: [224, 160, 320, 416] });
         const av = F.avaliar(det, img, { tamanhoMin: 0.12, umSo: true });
         if (!av.ok) { dica(det ? av.dica : 'Não encontramos um rosto nesta foto'); $('f-sub').textContent = 'Tente outra foto, de frente e bem iluminada.'; return; }
-        revisar([await F.descritor(det)], F.miniatura(img, det.caixa));
+        revisar([await F.descritor(det)], F.recorteRosto(img, det.caixa));
       } catch (er) { dica(er.message || 'Não foi possível ler a foto'); }
     };
 
@@ -135,20 +137,25 @@
     async function laco(v) {
       if (!ativo) return;
       try {
-        const det = await F.detectar(v, { tamanhos: [224, 160] });
-        const av = F.avaliar(det, v, { tamanhoMin: 0.3, umSo: true });
+        // Analisa exatamente o que aparece no oval (mesmo recorte do "object-fit: cover")
+        const quadro = F.capturarVisivel(v, $('f-quadro'), 540);
+        const det = await F.detectar(quadro, { tamanhos: [224, 160] });
+        const av = F.avaliar(det, quadro, { tamanhoMin: 0.36, tamanhoMax: 0.78, folga: 0.12, centroY: 0.47, umSo: true });
         if (!av.ok) { leituras = []; $('f-prog').style.width = '0'; dica(av.dica); }
         else if (performance.now() - ultimaLeitura > 220) {
           dica('Perfeito, fique parado(a)…', true);
           ultimaLeitura = performance.now();
-          leituras.push({ d: await F.descritor(det), det });
+          leituras.push({ d: await F.descritor(det), det, quadro });
           $('f-prog').style.width = (leituras.length / 3 * 100) + '%';
           if (leituras.length >= 3) {
             const ds = leituras.map(l => l.d);
             if (!F.coerentes(ds)) { leituras = []; dica('Fique parado(a), vamos de novo'); }
             else {
               ativo = false;
-              const foto = F.miniatura(v, leituras[1].det.caixa, 200, true);
+              // A foto é o próprio quadro analisado (o que a pessoa viu), da leitura mais centrada
+              const centro = l => { const b = l.det.caixa; return Math.hypot((b.x + b.width / 2) / l.quadro.width - 0.5, (b.y + b.height / 2) / l.quadro.height - 0.47); };
+              const melhor = leituras.reduce((a, b) => (centro(b) < centro(a) ? b : a));
+              const foto = F.fotoDoQuadro(melhor.quadro, { largura: 300, proporcao: 3 / 4, espelhar: true });
               stream.getTracks().forEach(t => t.stop());
               return revisar(ds, foto);
             }
